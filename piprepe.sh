@@ -19,7 +19,7 @@ readonly MOTD_FILE="/etc/motd"
 readonly JOE_INCLUDE_PATH="/etc/joe/joerc"
 readonly TMUX_CONFIG_CONTENT=$'set-option -g history-limit 100000\nset-option -g mouse on\n'
 readonly JOE_CONFIG_CONTENT=$':include /etc/joe/joerc\n-nobackups\n--wordwrap\n'
-readonly BASH_ALIAS_LINE="alias ll='ls -l --color=auto'"
+readonly BASH_ALIAS_LINE="alias ll='ls -la --color=auto'"
 readonly DESKTOP_KEYBOARD_LAYOUT="at"
 readonly DESKTOP_KEYBOARD_MODEL="pc105"
 readonly BASIC_PACKAGES=(
@@ -55,6 +55,7 @@ readonly CUSTOM_GITHUB_TOOLS=(
     "epinga.py|https://raw.githubusercontent.com/ewaldj/eping/main/epinga.py"
     "esplit.py|https://raw.githubusercontent.com/ewaldj/eping/main/esplit.py"
     "muxpi.sh|https://raw.githubusercontent.com/ewaldj/muxpi/main/muxpi.sh"
+    "nm-e.sh|https://raw.githubusercontent.com/ewaldj/nm-e/main/nm-e.sh"
 )
 
 declare -a SKIPPED_ITEMS=()
@@ -252,6 +253,7 @@ display_startup_overview() {
 |   esplit      Tool for splitting large log files for epinga analysis.
 |   muxpi       tmux-based Raspberry Pi helper for running iperf(3) and
 |               other CLI tools in parallel test sessions with logging.
+|   nm-e        A simplified interface for nmcli 
 |
 | Performance testing
 |   iperf       Classic network throughput tester.
@@ -587,6 +589,7 @@ create_custom_motd() {
 |   esplit      Tool for splitting large log files for epinga analysis.
 |   muxpi       tmux-based Raspberry Pi helper for running iperf(3) and
 |               other CLI tools in parallel test sessions with logging.
+|   nm-e        A simplified interface for nmcli 
 |
 | Performance testing
 |   iperf       Classic network throughput tester.
