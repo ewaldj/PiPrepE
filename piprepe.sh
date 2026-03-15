@@ -566,7 +566,6 @@ configure_system_bash_aliases() {
 
 # Added by ${SCRIPT_NAME}
 ${BASH_ALIAS_LINE}
-| Installed tools overview - partial list only
 EOF_ALIAS
 }
 
