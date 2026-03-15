@@ -4,7 +4,7 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
 export APT_LISTCHANGES_FRONTEND=none
-readonly VERSION="0.1"
+readonly VERSION="0.2"
 readonly SCRIPT_NAME="$(basename "$0")"
 readonly LOG_FILE="/var/log/${SCRIPT_NAME%.*}.log"
 readonly APT_CONFIG_DIR="/etc/apt/apt.conf.d"
@@ -67,6 +67,25 @@ LIVE_PROGRESS_MODE="false"
 USER_CREATION_REQUESTED="false"
 
 if [[ "${EUID}" -ne 0 ]]; then
+    ensure_interactive_terminal() {
+        if [[ ! -t 0 || ! -t 1 || ! -t 2 ]]; then
+            printf '%s
+' "This script requires an interactive terminal." >&2
+            exit 1
+        fi
+    }
+
+    ensure_interactive_terminal
+
+    if ! command -v sudo >/dev/null 2>&1; then
+        printf '%s
+' "This script must be run as root or with sudo, but sudo is not installed." >&2
+        exit 1
+    fi
+
+    printf '%s
+' "Root privileges are required. Please enter your sudo password to continue."
+    sudo -v
     exec sudo --preserve-env=TERM bash "$0" "$@"
 fi
 
@@ -217,50 +236,40 @@ determine_invoking_username() {
 display_startup_overview() {
     cat <<EOF_OVERVIEW
 
-======================================================================
- Raspberry Pi / Debian bootstrap script
- Author  : ${AUTHOR_NAME}
- Website : ${AUTHOR_WEBSITE}
-======================================================================
-
-This script performs the following actions automatically:
-
-  1. Updates the system package lists and upgrades installed packages
-  2. Installs base tools:
-     joe, dialog, ping/traceroute/telnet/ftp, iptables, tcpdump, btop,
-     net-tools, fping, nmap, curl, tmux, screen, iperf, iperf3,
-     netsniff-ng, tcpreplay
-  3. Installs GUI tools:
-     VS Code or code-oss, Wireshark, Remmina, Zenmap, XRDP
-  4. Optionally creates or updates one administrative user and adds it to:
-     sudo and Wireshark (if the Wireshark group exists)
-  5. If no new username is entered, no new account is created and only the
-     current invoking user is added to the Wireshark group when possible
-  6. Enables unattended automatic updates without automatic reboot
-  7. Configures Raspberry Pi / system settings:
-     - disable autologin
-     - enable VNC
-     - set timezone to ${DEFAULT_TIMEZONE}
-     - enable NTP time synchronization
-     - expand the root filesystem to the maximum SD card size
-  8. Downloads and installs custom tools to ${LOCAL_BIN_DIR}:
-     eping.py, epinga.py, esplit.py, muxpi.sh
-  9. Creates extensionless command aliases for downloaded scripts:
-     eping, epinga, esplit, muxpi
- 10. Configures editors and shells:
-     - joe config for current user and optional new user
-     - tmux config for current user and optional new user
-     - system-wide alias in /etc/bash.bashrc: ${BASH_ALIAS_LINE}
- 11. Creates a custom MOTD with a short overview of installed tools
- 12. If a new user is created, configures the Raspberry Pi desktop keyboard
-     for that user to German (Austria)
-
-Notes:
-  - Run this script with sudo or as root.
-  - The script does not reboot automatically.
-  - Some changes, especially filesystem expansion, are fully active after a
-    later manual reboot.
-  - A detailed log is written to ${LOG_FILE}
++----------------------------------------------------------------------------+
+| Raspberry Pi Network Toolkit
+| Prepared by Ewald Jeitler
+| https://www.jeitler.guru
++----------------------------------------------------------------------------+
+| Installed tools overview - partial list only
++----------------------------------------------------------------------------+
+|
+| Tools by Ewald Jeitler
+|   eping       High-performance tool using fping and Python to test
+|               thousands of hosts in parallel with integrated logging.
+|   epinga      Tool for analyzing eping log files.
+|   esplit      Tool for splitting large log files for epinga analysis.
+|   muxpi       tmux-based Raspberry Pi helper for running iperf(3) and
+|               other CLI tools in parallel test sessions with logging.
+|
+| Performance testing
+|   iperf       Classic network throughput tester.
+|   iperf3      Modern client/server bandwidth measurement tool.
+|
+| Monitoring and packet analysis
+|   btop        Interactive monitor for CPU, memory, and network usage.
+|   tcpdump     Command-line packet capture and inspection tool.
+|   tcpreplay   Replay captured packets onto an interface.
+|   netsniff-ng High-performance networking toolkit.
+|   mausezahn   Packet generator included with netsniff-ng.
+|
+| Useful notes
+|   - Use 'll' for a colored long directory listing.
+|   - All tools listed above can be run without file extensions.
++----------------------------------------------------------------------------+
+| Enjoy the tools, have fun with network performance testing,
+| and have a perfect day! - Ewald
++----------------------------------------------------------------------------+
 EOF_OVERVIEW
 }
 
@@ -469,6 +478,7 @@ write_file_as_user() {
     local file_content="$3"
     local home_directory=""
     local parent_directory=""
+    local config_directory=""
 
     home_directory="$(get_user_home_directory "$username")"
     if [[ -z "$home_directory" || ! -d "$home_directory" ]]; then
@@ -479,7 +489,25 @@ write_file_as_user() {
     parent_directory="$(dirname "$destination_path")"
     mkdir -p "$parent_directory"
     printf '%s' "$file_content" >"$destination_path"
-    chown -R "$username:$username" "$parent_directory"
+
+    # Ensure that any created user configuration directories remain writable
+    # by the target user. This avoids permission issues such as a root-owned
+    # ~/.config directory that would block desktop applications from creating
+    # their own subdirectories later.
+    if [[ "$parent_directory" == "$home_directory/.config"* ]]; then
+        config_directory="$home_directory/.config"
+        if [[ -d "$config_directory" ]]; then
+            chown -R "$username:$username" "$config_directory"
+        fi
+    fi
+
+    if [[ -e "$destination_path" ]]; then
+        chown "$username:$username" "$destination_path"
+    fi
+
+    if [[ -d "$parent_directory" ]]; then
+        chown -R "$username:$username" "$parent_directory"
+    fi
 }
 
 configure_joe_for_user() {
@@ -538,6 +566,7 @@ configure_system_bash_aliases() {
 
 # Added by ${SCRIPT_NAME}
 ${BASH_ALIAS_LINE}
+| Installed tools overview - partial list only
 EOF_ALIAS
 }
 
@@ -797,6 +826,35 @@ install_custom_github_tools() {
     done
 }
 
+
+prompt_for_reboot() {
+    local response=""
+
+    while true; do
+        printf '
+Would you like to reboot the system now? [y/N]: '
+        IFS= read -r response
+        response="$(trim_whitespace "$response")"
+
+        case "${response,,}" in
+            y|yes|j|ja)
+                printf '%s
+' 'Rebooting system now...'
+                reboot
+                ;;
+            ""|n|no|nein)
+                printf '%s
+' 'Reboot skipped. You can reboot later manually if needed.'
+                return 0
+                ;;
+            *)
+                printf '%s
+' 'Please answer with y/yes or n/no.' >&2
+                ;;
+        esac
+    done
+}
+
 build_summary_message() {
     local reboot_note="No reboot is required right now."
     local skipped_summary="None"
@@ -864,6 +922,7 @@ main() {
     configure_user_customizations
 
     printf '\n%s\n\n' "$(build_summary_message)"
+    prompt_for_reboot
 }
 
 main "$@"
