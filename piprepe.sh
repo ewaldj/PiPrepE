@@ -1,10 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+readonly VERSION="0.3"
+
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
 export APT_LISTCHANGES_FRONTEND=none
-readonly VERSION="0.2"
 readonly SCRIPT_NAME="$(basename "$0")"
 readonly LOG_FILE="/var/log/${SCRIPT_NAME%.*}.log"
 readonly APT_CONFIG_DIR="/etc/apt/apt.conf.d"
