@@ -1,5 +1,6 @@
 # piprepe.sh 
 
+Tested on Raspberry Pi OS (Trixie‑based) and confirmed to work on Raspberry Pi 3 and Raspberry Pi 5 devices
 
 ## Copy this command into your Raspberry Pi shell to start the installation
 ```
