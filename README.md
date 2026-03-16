@@ -1,8 +1,8 @@
-# piprepe.sh 
+# PiPrepE  (Pi Preparation Easy)
 
 Tested on Raspberry Pi OS (Trixie‑based) and confirmed to work on Raspberry Pi 3 and Raspberry Pi 5 devices
 
-## Copy this command into your Raspberry Pi shell to start the installation
+## Copy this command into your Raspberry Pi shell to start the installation.
 ```
 sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ewaldj/PiPrepE/refs/heads/main/piprepe.sh)"
 ```
