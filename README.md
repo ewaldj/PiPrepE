@@ -1,6 +1,6 @@
 # PiPrepE  (Pi Preparation Easy)
 
-Tested on Raspberry Pi OS (Trixie‑based) and confirmed to work on Raspberry Pi 3 and Raspberry Pi 5 devices
+Built and tested on Raspberry Pi OS (Trixie). It will probably run on Debian and similar systems too — just no guarantees.
 
 ## Copy this command into your Raspberry Pi shell to start the installation.
 ```
