@@ -13,11 +13,15 @@
 
 set -euo pipefail
 
-readonly VERSION="0.6-patched"
+readonly VERSION="0.6.2-locale-neutral"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
 export APT_LISTCHANGES_FRONTEND=none
+# Force a stable, language-neutral locale inside the script so parsed command
+# output remains consistent regardless of the system language.
+export LANG=C
+export LC_ALL=C
 readonly SCRIPT_NAME="$(basename "$0")"
 readonly LOG_FILE="/var/log/${SCRIPT_NAME%.*}.log"
 readonly APT_CONFIG_DIR="/etc/apt/apt.conf.d"
@@ -423,7 +427,7 @@ is_package_available() {
     local package_name="$1"
     local candidate_version=""
 
-    candidate_version="$(apt-cache policy "$package_name" 2>/dev/null | awk '/Candidate:/ {print $2}')" || true
+    candidate_version="$(LC_ALL=C apt-cache policy -- "$package_name" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')" || true
     [[ -n "$candidate_version" && "$candidate_version" != "(none)" ]]
 }
 
