@@ -53,7 +53,7 @@ readonly BASIC_PACKAGES=(
     "tmux"
     "screen"
     "iperf"
-    "iperf3"
+#    "iperf3" (The current iperf3 release (v3.20) will be installed later using a .deb package.)
     "netsniff-ng"
     "tcpreplay"
 )
