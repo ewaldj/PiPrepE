@@ -1,7 +1,19 @@
 #!/bin/bash
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# PiPrepE.sh by ewald@jeitler.cc 2026 https://www.jeitler.guru
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# codename: PiPrepE (Pi Preparation Easy) 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# When I wrote this code, only God and I knew how it worked.
+# Now only God and the AI know it.
+# And since the AI helped write it… good luck to all of us.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
 set -euo pipefail
 
-readonly VERSION="0.3"
+readonly VERSION="0.5"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -17,6 +29,8 @@ readonly AUTHOR_WEBSITE="https://www.jeitler.guru"
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly MOTD_FILE="/etc/motd"
 readonly JOE_INCLUDE_PATH="/etc/joe/joerc"
+readonly GITHUB_PACKAGES_API_URL="https://api.github.com/repos/ewaldj/PiPrepE/contents/packages?ref=main"
+readonly GITHUB_PACKAGES_REPO_PAGE="https://github.com/ewaldj/PiPrepE/tree/main/packages"
 readonly TMUX_CONFIG_CONTENT=$'set-option -g history-limit 100000\nset-option -g mouse on\n'
 readonly JOE_CONFIG_CONTENT=$':include /etc/joe/joerc\n-nobackups\n--wordwrap\n'
 readonly BASH_ALIAS_LINE="alias ll='ls -la --color=auto'"
@@ -266,6 +280,10 @@ display_startup_overview() {
 |   netsniff-ng High-performance networking toolkit.
 |   mausezahn   Packet generator included with netsniff-ng.
 |
+| Additional package source
+|   GitHub .deb packages from PiPrepE/packages are installed automatically.
+|   Current example: iperf3 3.20 arm64 packages from the repository folder.
+|
 | Useful notes
 |   - Use 'll' for a colored long directory listing.
 |   - All tools listed above can be run without file extensions.
@@ -446,6 +464,107 @@ install_package_group() {
     fi
 }
 
+ensure_python3_available() {
+    if ! command_exists python3; then
+        run_logged_command "Installing Python 3 for GitHub-hosted content..." apt_noninteractive install -y python3
+    fi
+}
+
+fetch_github_packages_metadata() {
+    local metadata_file="$1"
+
+    run_logged_command "Fetching GitHub package metadata from PiPrepE/packages..." \
+        curl -fsSL --proto '=https' --tlsv1.2 \
+        -H 'Accept: application/vnd.github+json' \
+        -o "$metadata_file" \
+        "$GITHUB_PACKAGES_API_URL"
+}
+
+list_github_deb_packages() {
+    local metadata_file="$1"
+
+    python3 - "$metadata_file" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+metadata_path = Path(sys.argv[1])
+items = json.loads(metadata_path.read_text(encoding="utf-8"))
+
+for item in items:
+    if item.get("type") != "file":
+        continue
+    name = item.get("name", "")
+    download_url = item.get("download_url", "")
+    if name.endswith(".deb") and download_url:
+        print(f"{name}|{download_url}")
+PY
+}
+
+install_github_directory_deb_packages() {
+    local metadata_file=""
+    local packages_directory=""
+    local current_architecture=""
+    local deb_name=""
+    local deb_url=""
+    local downloaded_file=""
+    local package_architecture=""
+    local -a installable_deb_files=()
+    local found_any_deb="false"
+
+    prepare_download_workspace
+    ensure_python3_available
+
+    metadata_file="${DOWNLOAD_WORKSPACE}/github-packages.json"
+    packages_directory="${DOWNLOAD_WORKSPACE}/github-deb-packages"
+    current_architecture="$(dpkg --print-architecture)"
+
+    mkdir -p "$packages_directory"
+    fetch_github_packages_metadata "$metadata_file"
+
+    while IFS='|' read -r deb_name deb_url; do
+        if [[ -z "$deb_name" || -z "$deb_url" ]]; then
+            continue
+        fi
+
+        found_any_deb="true"
+        downloaded_file="${packages_directory}/${deb_name}"
+
+        run_logged_command "Downloading package ${deb_name} from GitHub..." \
+            curl -fsSL --proto '=https' --tlsv1.2 -o "$downloaded_file" "$deb_url"
+
+        if [[ ! -s "$downloaded_file" ]]; then
+            SKIPPED_ITEMS+=("Empty GitHub .deb download: ${deb_name}")
+            continue
+        fi
+
+        package_architecture="$(dpkg-deb -f "$downloaded_file" Architecture 2>/dev/null || true)"
+        if [[ -z "$package_architecture" ]]; then
+            SKIPPED_ITEMS+=("Could not read package architecture: ${deb_name}")
+            continue
+        fi
+
+        if [[ "$package_architecture" == "$current_architecture" || "$package_architecture" == "all" ]]; then
+            installable_deb_files+=("$downloaded_file")
+        else
+            SKIPPED_ITEMS+=("GitHub package skipped due to architecture mismatch: ${deb_name} (${package_architecture} != ${current_architecture})")
+        fi
+    done < <(list_github_deb_packages "$metadata_file")
+
+    if [[ "$found_any_deb" != "true" ]]; then
+        SKIPPED_ITEMS+=("No .deb packages found in GitHub folder: ${GITHUB_PACKAGES_REPO_PAGE}")
+        return 0
+    fi
+
+    if ((${#installable_deb_files[@]} == 0)); then
+        SKIPPED_ITEMS+=("No compatible GitHub .deb packages were found for architecture: ${current_architecture}")
+        return 0
+    fi
+
+    run_logged_command "Installing GitHub .deb packages from PiPrepE/packages..." \
+        apt_noninteractive install -y "${installable_deb_files[@]}"
+}
+
 set_user_password() {
     printf '%s:%s\n' "$TARGET_USERNAME" "$TARGET_PASSWORD" | chpasswd
 }
@@ -601,6 +720,10 @@ create_custom_motd() {
 |   tcpreplay   Replay captured packets onto an interface.
 |   netsniff-ng High-performance networking toolkit.
 |   mausezahn   Packet generator included with netsniff-ng.
+|
+| Additional package source
+|   GitHub .deb packages from PiPrepE/packages are installed automatically.
+|   Current example: iperf3 3.20 arm64 packages from the repository folder.
 |
 | Useful notes
 |   - Use 'll' for a colored long directory listing.
@@ -817,10 +940,7 @@ install_custom_github_tools() {
     local source_url=""
 
     ensure_directory_exists_or_create "$LOCAL_BIN_DIR"
-
-    if ! command_exists python3; then
-        run_logged_command "Installing Python 3 for GitHub-hosted tools..." apt_noninteractive install -y python3
-    fi
+    ensure_python3_available
 
     for tool_definition in "${CUSTOM_GITHUB_TOOLS[@]}"; do
         tool_name="${tool_definition%%|*}"
@@ -878,13 +998,14 @@ build_summary_message() {
         skipped_summary="${skipped_summary%; }"
     fi
 
-    printf 'Setup completed successfully.\n\nInvoking user: %s\nNew admin user: %s\nWireshark group target: %s\nTimezone: %s\nLive log file: %s\nGitHub tools installed to: %s\nSystem alias: %s\nDesktop keyboard for new user: %s\n\nSkipped items: %s\n\n%s' \
+    printf 'Setup completed successfully.\n\nInvoking user: %s\nNew admin user: %s\nWireshark group target: %s\nTimezone: %s\nLive log file: %s\nGitHub tools installed to: %s\nGitHub .deb source: %s\nSystem alias: %s\nDesktop keyboard for new user: %s\n\nSkipped items: %s\n\n%s' \
         "$INVOKING_USERNAME" \
         "$new_user_summary" \
         "${WIRESHARK_TARGET_USERNAME:-none}" \
         "$DEFAULT_TIMEZONE" \
         "$LOG_FILE" \
         "$LOCAL_BIN_DIR" \
+        "$GITHUB_PACKAGES_REPO_PAGE" \
         "$BASH_ALIAS_LINE" \
         "German (Austria)" \
         "$skipped_summary" \
@@ -921,6 +1042,7 @@ main() {
     configure_auto_updates
     configure_system_time
     configure_raspberry_pi_settings
+    install_github_directory_deb_packages
     install_custom_github_tools
     configure_user_customizations
 
