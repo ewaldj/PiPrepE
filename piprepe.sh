@@ -56,10 +56,13 @@ readonly BASIC_PACKAGES=(
     "tmux"
     "screen"
     "iperf"
-#    "iperf3" (The current iperf3 release (v3.20) will be installed later using a .deb package.)
+    "iperf3" 
     "netsniff-ng"
     "tcpreplay"
+    "bc"
+    "network-manager"
 )
+
 readonly GUI_PACKAGES=(
     "code"
     "wireshark"
