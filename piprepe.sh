@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.10"
+readonly VERSION="0.11"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -522,6 +522,11 @@ setup_vscode_repository() {
     print_status "Adding Microsoft VS Code repository for ${arch}..."
 
     mkdir -p /etc/apt/keyrings
+
+    # Ensure gnupg is available (not installed by default on minimal Debian)
+    if ! command_exists gpg; then
+        run_logged_command "Installing gnupg..." apt_noninteractive install -y gnupg
+    fi
 
     run_logged_command "Downloading Microsoft GPG key..."         bash -c 'curl -fsSL --proto "=https" --tlsv1.2 https://packages.microsoft.com/keys/microsoft.asc             | gpg --dearmor -o "'"$keyring_path"'"'
 
