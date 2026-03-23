@@ -52,4 +52,4 @@ install_prerequisites() {
 printf '%s\n' "[bootstrap] Starting PiPrepE bootstrap..."
 install_prerequisites
 printf '%s\n' "[bootstrap] Launching piprepe.sh..."
-bash <(wget --no-check-certificate -qO- "$PIPREPE_URL")
+bash <(wget --header="Cache-Control: no-cache" --no-check-certificate -qO- "$PIPREPE_URL")
