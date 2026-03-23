@@ -15,8 +15,8 @@ set -euo pipefail
 
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
- 
-readonly VERSION="0.15"
+
+readonly VERSION="0.21"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -27,19 +27,14 @@ readonly APT_CONFIG_DIR="/etc/apt/apt.conf.d"
 readonly NEEDRESTART_CONFIG_DIR="/etc/needrestart/conf.d"
 readonly LOCAL_BIN_DIR="/usr/local/bin"
 readonly DEFAULT_TIMEZONE="Europe/Vienna"
-readonly AUTHOR_NAME="Ewald Jeitler"
-readonly AUTHOR_WEBSITE="https://www.jeitler.guru"
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly MOTD_FILE="/etc/motd"
-readonly MOTD_NETWORK_SCRIPT="/etc/update-motd.d/99-piprepe-network"
-readonly JOE_INCLUDE_PATH="/etc/joe/joerc"
+readonly MOTD_NETWORK_SCRIPT="/etc/update-motd.d/10-piprepe-network"
 readonly GITHUB_PACKAGES_API_URL="https://api.github.com/repos/ewaldj/PiPrepE/contents/packages?ref=main"
 readonly GITHUB_PACKAGES_REPO_PAGE="https://github.com/ewaldj/PiPrepE/tree/main/packages"
 readonly TMUX_CONFIG_CONTENT=$'set-option -g history-limit 100000\nset-option -g mouse on\n'
 readonly JOE_CONFIG_CONTENT=$':include /etc/joe/joerc\n-nobackups\n--wordwrap\n'
 readonly BASH_ALIAS_LINE="alias ll='ls -la --color=auto'"
-readonly DESKTOP_KEYBOARD_LAYOUT="at"
-readonly DESKTOP_KEYBOARD_MODEL="pc105"
 readonly BASIC_PACKAGES=(
     "joe"
     "dialog"
@@ -261,33 +256,62 @@ display_startup_overview() {
     cat <<EOF_OVERVIEW
 
 +----------------------------------------------------------------------------+
-| PiPrepE - Pi Preparation Easy                          v${VERSION}
-| Ewald Jeitler  https://www.jeitler.guru
+| PiPrepE - Pi Preparation Easy
+| Prepared by Ewald Jeitler
+| https://www.jeitler.guru
 +----------------------------------------------------------------------------+
-| Base tools
-|   joe  tmux  screen  curl  nmap  fping  net-tools  iptables
-|   tcpdump  tcpreplay  netsniff-ng  btop  iperf  dialog  inetutils
-|
-| GUI tools (optional)
-|   xfce4+lightdm  xrdp  wireshark  VS Code  remmina  zenmap
-|   Keyboard layout auto-applied from /etc/default/keyboard
-|
-| Custom tools -> /usr/local/bin  (usable without extension)
-|   eping  epinga  esplit  muxpi  nm-e
-|
-| GitHub .deb  ->  iperf3 (arch-matched from PiPrepE/packages)
-|
-| User setup
-|   Invoking user : sudo + wireshark groups, joe + tmux configured
-|   New user      : sudo + wireshark groups, joe + tmux configured
-|                   created with system defaults (locale/shell)
-|
-| System
-|   apt update+upgrade, unattended-upgrades, timezone Vienna, NTP
-|   ll alias, log -> /var/log/piprepe.log
-|   Raspberry Pi: boot mode, VNC, filesystem expansion (if raspi-config)
+| What this script does
 +----------------------------------------------------------------------------+
-| Have fun with network performance testing! - Ewald
+|
+| System setup
+|   - apt update + upgrade (non-interactive, no prompts)
+|   - Timezone set to Europe/Vienna, NTP enabled
+|   - System-wide shell alias: ll='ls -la --color=auto'
+|   - unattended-upgrades configured for automatic security updates
+|   - Raspberry Pi specific settings (if raspi-config present):
+|     boot mode, VNC, filesystem expansion
+|
+| User management
+|   - Optional: create a new admin user with password (sudo group)
+|   - Invoking user added to sudo group if not already a member
+|   - Wireshark group membership for the target user
+|   - joe + tmux config applied per user
+|
+| Base tools installed
+|   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
+|   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
+|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog
+|
+| GUI tools (optional, asked at setup)
+|   xfce4 + lightdm   Desktop environment (installed if no GUI present)
+|   wireshark          GUI packet analyzer
+|   VS Code            code / code-oss editor
+|   remmina            Remote desktop client
+|   zenmap             Nmap GUI frontend
+|   xrdp               RDP server for remote desktop access
+|
+| Custom tools by Ewald Jeitler (installed to /usr/local/bin)
+|   eping       Parallel host reachability tester using fping + Python
+|   epinga      Log analyzer for eping output
+|   esplit      Log splitter for epinga analysis
+|   muxpi       tmux helper for iperf(3) parallel test sessions
+|   nm-e        Simplified nmcli interface
+|
+| Performance testing
+|   iperf        Classic network throughput tester
+|   iperf3       Modern bandwidth measurement tool (from GitHub .deb)
+|
+| GitHub .deb packages
+|   Packages in PiPrepE/packages are installed automatically
+|   (architecture-matched, e.g. iperf3 3.20 arm64)
+|
+| Useful notes
+|   - All custom tools can be run without file extensions
+|   - Use 'll' for a colored long directory listing
+|   - Full log written to /var/log/piprepe.log
++----------------------------------------------------------------------------+
+| Enjoy the tools, have fun with network performance testing,
+| and have a perfect day! - Ewald
 +----------------------------------------------------------------------------+
 EOF_OVERVIEW
 }
@@ -555,81 +579,50 @@ install_desktop_if_missing() {
         apt_noninteractive install -y xfce4 xfce4-terminal lightdm lightdm-gtk-greeter
 }
 
-configure_gui_locale() {
+
+configure_xrdp_keyboard() {
+    # xrdp starts a fresh X session and ignores /etc/default/keyboard entirely.
+    # Writing ~/.xsessionrc with setxkbmap is the only reliable fix.
     local keyboard_file="/etc/default/keyboard"
-    local xorg_conf_dir="/etc/X11/xorg.conf.d"
-    local xorg_conf_file="${xorg_conf_dir}/00-keyboard.conf"
-    local xkblayout="" xkbmodel="" xkbvariant="" xkboptions=""
-    local system_lang="" system_locale=""
+    local xkblayout="" xkbmodel="" xkbvariant=""
 
-    # ── Keyboard: read from /etc/default/keyboard (set by raspi-config) ──
-    if [[ -f "$keyboard_file" ]]; then
-        xkblayout="$( grep -E '^XKBLAYOUT='  "$keyboard_file" | cut -d= -f2 | tr -d '"' || true)"
-        xkbmodel="$(  grep -E '^XKBMODEL='   "$keyboard_file" | cut -d= -f2 | tr -d '"' || true)"
-        xkbvariant="$(grep -E '^XKBVARIANT=' "$keyboard_file" | cut -d= -f2 | tr -d '"' || true)"
-        xkboptions="$(grep -E '^XKBOPTIONS=' "$keyboard_file" | cut -d= -f2 | tr -d '"' || true)"
+    if [[ ! -f "$keyboard_file" ]]; then
+        SKIPPED_ITEMS+=("xrdp keyboard fix skipped: ${keyboard_file} not found")
+        return 0
+    fi
 
-        if [[ -n "$xkblayout" ]]; then
-            print_status "Applying X11 keyboard: layout=${xkblayout} model=${xkbmodel:-pc105}"
-            mkdir -p "$xorg_conf_dir"
-            cat >"$xorg_conf_file" <<EOF_XKBD
-# Keyboard layout generated by PiPrepE — source: ${keyboard_file}
-Section "InputClass"
-    Identifier      "system-keyboard"
-    MatchIsKeyboard "on"
-    Option "XkbLayout"  "${xkblayout}"
-    Option "XkbModel"   "${xkbmodel:-pc105}"
-    Option "XkbVariant" "${xkbvariant}"
-    Option "XkbOptions" "${xkboptions}"
-EndSection
-EOF_XKBD
-            if command_exists localectl; then
-                localectl set-x11-keymap \
-                    "$xkblayout" "${xkbmodel:-pc105}" "${xkbvariant}" "${xkboptions}" \
-                    2>/dev/null || SKIPPED_ITEMS+=("localectl set-x11-keymap failed (non-fatal)")
+    xkblayout="$( grep -E '^XKBLAYOUT=' "$keyboard_file" | cut -d= -f2 | tr -d '"')"
+    xkbmodel="$(  grep -E '^XKBMODEL='   "$keyboard_file" | cut -d= -f2 | tr -d '"')"
+    xkbvariant="$(grep -E '^XKBVARIANT=' "$keyboard_file" | cut -d= -f2 | tr -d '"')"
+
+    if [[ -z "$xkblayout" ]]; then
+        SKIPPED_ITEMS+=("xrdp keyboard fix skipped: XKBLAYOUT not set in ${keyboard_file}")
+        return 0
+    fi
+
+    local xsession_content="setxkbmap -model ${xkbmodel:-pc105} -layout ${xkblayout}"
+    if [[ -n "$xkbvariant" ]]; then
+        xsession_content="${xsession_content} -variant ${xkbvariant}"
+    fi
+
+    print_status "Writing xrdp keyboard fix (~/.xsessionrc): ${xsession_content}"
+
+    local u="" user_home=""
+    local users_to_configure=()
+
+    [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root" ]] &&         users_to_configure+=("$INVOKING_USERNAME")
+    [[ "$USER_CREATION_REQUESTED" == "true" && -n "$TARGET_USERNAME" ]] &&         users_to_configure+=("$TARGET_USERNAME")
+
+    for u in "${users_to_configure[@]}"; do
+        if id "$u" >/dev/null 2>&1; then
+            user_home="$(get_user_home_directory "$u")"
+            if [[ -n "$user_home" && -d "$user_home" ]]; then
+                write_file_as_user "$u" "${user_home}/.xsessionrc" "$xsession_content"
+                print_status "xrdp keyboard fix written for ${u}: ${xsession_content}"
             fi
-        else
-            SKIPPED_ITEMS+=("X11 keyboard config skipped: XKBLAYOUT not set in ${keyboard_file}")
         fi
-    else
-        SKIPPED_ITEMS+=("X11 keyboard config skipped: ${keyboard_file} not found")
-    fi
-
-    # ── Locale: read system locale and write ~/.xsessionrc for each user ──
-    # xrdp starts a fresh X session that does not inherit PAM locale — ~/.xsessionrc fixes this
-    system_lang="$(localectl status 2>/dev/null | awk '/System Locale:/ {print $3}' | cut -d= -f2 || true)"
-    if [[ -z "$system_lang" ]] && [[ -f /etc/locale.conf ]]; then
-        system_lang="$(grep -E '^LANG=' /etc/locale.conf | cut -d= -f2 | tr -d '"' || true)"
-    fi
-    if [[ -z "$system_lang" ]] && [[ -f /etc/default/locale ]]; then
-        system_lang="$(grep -E '^LANG=' /etc/default/locale | cut -d= -f2 | tr -d '"' || true)"
-    fi
-
-    if [[ -n "$system_lang" ]]; then
-        system_locale="export LANG=${system_lang}
-export LC_ALL=${system_lang}"
-        print_status "Writing xrdp locale fix (~/.xsessionrc) for LANG=${system_lang}"
-
-        local xsession_users=()
-        [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root" ]] && xsession_users+=("$INVOKING_USERNAME")
-        [[ "$USER_CREATION_REQUESTED" == "true" && -n "$TARGET_USERNAME" ]] && xsession_users+=("$TARGET_USERNAME")
-
-        local u="" user_home=""
-        for u in "${xsession_users[@]}"; do
-            if id "$u" >/dev/null 2>&1; then
-                user_home="$(get_user_home_directory "$u")"
-                if [[ -n "$user_home" && -d "$user_home" ]]; then
-                    write_file_as_user "$u" "${user_home}/.xsessionrc" "$system_locale"
-                    run_logged_command "Writing xrdp locale fix for ${u}..." \
-                        write_file_as_user "$u" "${user_home}/.xsessionrc" "$system_locale"
-                fi
-            fi
-        done
-    else
-        SKIPPED_ITEMS+=("xrdp locale fix skipped: could not determine system LANG")
-    fi
+    done
 }
-
 
 ensure_python3_available() {
     if ! command_exists python3; then
@@ -825,21 +818,6 @@ configure_tmux_for_user() {
     write_file_as_user "$username" "${user_home}/.tmux.conf" "$TMUX_CONFIG_CONTENT"
 }
 
-configure_desktop_keyboard_for_user() {
-    local username="$1"
-    local user_home=""
-    local labwc_environment_path=""
-
-    user_home="$(get_user_home_directory "$username")"
-    if [[ -z "$user_home" ]]; then
-        SKIPPED_ITEMS+=("Could not determine home directory for desktop keyboard configuration: ${username}")
-        return 0
-    fi
-
-    labwc_environment_path="${user_home}/.config/labwc/environment"
-    write_file_as_user "$username" "$labwc_environment_path" \
-$'XKB_DEFAULT_MODEL='"${DESKTOP_KEYBOARD_MODEL}"$'\nXKB_DEFAULT_LAYOUT='"${DESKTOP_KEYBOARD_LAYOUT}"$'\nXKB_DEFAULT_VARIANT=\nXKB_DEFAULT_OPTIONS=\n'
-}
 
 configure_system_bash_aliases() {
     if [[ ! -f "$SYSTEM_BASHRC" ]]; then
@@ -928,33 +906,63 @@ create_custom_motd() {
     cat >"$MOTD_FILE" <<'EOF_MOTD'
 +----------------------------------------------------------------------------+
 | PiPrepE - Pi Preparation Easy
-| Ewald Jeitler  https://www.jeitler.guru
+| Prepared by Ewald Jeitler
+| https://www.jeitler.guru
 +----------------------------------------------------------------------------+
-| Base tools
-|   joe  tmux  screen  curl  nmap  fping  net-tools  iptables
-|   tcpdump  tcpreplay  netsniff-ng  btop  iperf  dialog  inetutils
-|
-| GUI tools (optional)
-|   xfce4+lightdm  xrdp  wireshark  VS Code  remmina  zenmap
-|   Keyboard layout auto-applied from /etc/default/keyboard
-|
-| Custom tools -> /usr/local/bin  (usable without extension)
-|   eping  epinga  esplit  muxpi  nm-e
-|
-| GitHub .deb  ->  iperf3 (arch-matched from PiPrepE/packages)
-|
-| User setup
-|   Invoking user : sudo + wireshark groups, joe + tmux configured
-|   New user      : sudo + wireshark groups, joe + tmux configured
-|                   created with system defaults (locale/shell)
-|
-| System
-|   apt update+upgrade, unattended-upgrades, timezone Vienna, NTP
-|   ll alias, log -> /var/log/piprepe.log
-|   Raspberry Pi: boot mode, VNC, filesystem expansion (if raspi-config)
+| What this script does
 +----------------------------------------------------------------------------+
-| Have fun with network performance testing! - Ewald
+|
+| System setup
+|   - apt update + upgrade (non-interactive, no prompts)
+|   - Timezone set to Europe/Vienna, NTP enabled
+|   - System-wide shell alias: ll='ls -la --color=auto'
+|   - unattended-upgrades configured for automatic security updates
+|   - Raspberry Pi specific settings (if raspi-config present):
+|     boot mode, VNC, filesystem expansion
+|
+| User management
+|   - Optional: create a new admin user with password (sudo group)
+|   - Invoking user added to sudo group if not already a member
+|   - Wireshark group membership for the target user
+|   - joe + tmux config applied per user
+|
+| Base tools installed
+|   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
+|   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
+|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog
+|
+| GUI tools (optional, asked at setup)
+|   xfce4 + lightdm   Desktop environment (installed if no GUI present)
+|   wireshark          GUI packet analyzer
+|   VS Code            code / code-oss editor
+|   remmina            Remote desktop client
+|   zenmap             Nmap GUI frontend
+|   xrdp               RDP server for remote desktop access
+|
+| Custom tools by Ewald Jeitler (installed to /usr/local/bin)
+|   eping       Parallel host reachability tester using fping + Python
+|   epinga      Log analyzer for eping output
+|   esplit      Log splitter for epinga analysis
+|   muxpi       tmux helper for iperf(3) parallel test sessions
+|   nm-e        Simplified nmcli interface
+|
+| Performance testing
+|   iperf        Classic network throughput tester
+|   iperf3       Modern bandwidth measurement tool (from GitHub .deb)
+|
+| GitHub .deb packages
+|   Packages in PiPrepE/packages are installed automatically
+|   (architecture-matched, e.g. iperf3 3.20 arm64)
+|
+| Useful notes
+|   - All custom tools can be run without file extensions
+|   - Use 'll' for a colored long directory listing
+|   - Full log written to /var/log/piprepe.log
 +----------------------------------------------------------------------------+
+| Enjoy the tools, have fun with network performance testing,
+| and have a perfect day! - Ewald
++----------------------------------------------------------------------------+
+
 EOF_MOTD
 }
 
@@ -972,8 +980,11 @@ configure_user_customizations() {
         if id "$TARGET_USERNAME" >/dev/null 2>&1; then
             run_logged_command "Configuring joe for ${TARGET_USERNAME}..." configure_joe_for_user "$TARGET_USERNAME"
             run_logged_command "Configuring tmux for ${TARGET_USERNAME}..." configure_tmux_for_user "$TARGET_USERNAME"
-            run_logged_command "Configuring Raspberry Pi desktop keyboard for ${TARGET_USERNAME}..." configure_desktop_keyboard_for_user "$TARGET_USERNAME"
         fi
+    fi
+
+    if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then
+        run_logged_command "Configuring xrdp keyboard layout..." configure_xrdp_keyboard
     fi
 
     run_logged_command "Configuring system-wide shell aliases..." configure_system_bash_aliases
@@ -1292,7 +1303,6 @@ main() {
         setup_vscode_repository
         install_desktop_if_missing
         install_package_group "Installing GUI tools..." "${GUI_PACKAGES[@]}"
-        run_logged_command "Configuring GUI keyboard and locale..." configure_gui_locale
     else
         print_status "Skipping GUI tools and desktop installation as requested."
     fi
