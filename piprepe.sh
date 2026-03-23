@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.21"
+readonly VERSION="0.22"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -617,8 +617,13 @@ configure_xrdp_keyboard() {
         if id "$u" >/dev/null 2>&1; then
             user_home="$(get_user_home_directory "$u")"
             if [[ -n "$user_home" && -d "$user_home" ]]; then
+                # ~/.xsessionrc: sets keyboard layout at X session start
                 write_file_as_user "$u" "${user_home}/.xsessionrc" "$xsession_content"
                 print_status "xrdp keyboard fix written for ${u}: ${xsession_content}"
+
+                # ~/.xsession: forces xfce4 instead of Raspberry Pi OS default LXDE/Openbox
+                write_file_as_user "$u" "${user_home}/.xsession" "startxfce4"
+                print_status "xrdp session fix written for ${u}: startxfce4"
             fi
         fi
     done
