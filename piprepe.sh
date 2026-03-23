@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.9"
+readonly VERSION="0.10"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -500,6 +500,35 @@ resolve_package_name() {
             return 1
             ;;
     esac
+}
+
+setup_vscode_repository() {
+    local arch=""
+    local keyring_path="/etc/apt/keyrings/microsoft.gpg"
+    local sources_path="/etc/apt/sources.list.d/vscode.list"
+
+    # Only amd64 and arm64 are supported by Microsoft
+    arch="$(dpkg --print-architecture 2>/dev/null || true)"
+    if [[ "$arch" != "amd64" && "$arch" != "arm64" ]]; then
+        SKIPPED_ITEMS+=("VS Code repository not added: unsupported architecture (${arch})")
+        return 0
+    fi
+
+    if [[ -f "$sources_path" ]]; then
+        print_status "VS Code repository already configured, skipping."
+        return 0
+    fi
+
+    print_status "Adding Microsoft VS Code repository for ${arch}..."
+
+    mkdir -p /etc/apt/keyrings
+
+    run_logged_command "Downloading Microsoft GPG key..."         bash -c 'curl -fsSL --proto "=https" --tlsv1.2 https://packages.microsoft.com/keys/microsoft.asc             | gpg --dearmor -o "'"$keyring_path"'"'
+
+    printf '%s
+'         "deb [arch=${arch} signed-by=${keyring_path}] https://packages.microsoft.com/repos/code stable main"         > "$sources_path"
+
+    run_logged_command "Updating package lists after adding VS Code repo..." apt_noninteractive update
 }
 
 install_package_group() {
@@ -1239,6 +1268,7 @@ main() {
     install_package_group "Installing base tools..." "${BASIC_PACKAGES[@]}"
 
     if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then
+        setup_vscode_repository
         install_desktop_if_missing
         install_package_group "Installing GUI tools..." "${GUI_PACKAGES[@]}"
     else
