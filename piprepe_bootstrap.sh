@@ -12,39 +12,33 @@
 #   bash <(wget --header="Cache-Control: no-cache" --no-check-certificate -qO- https://raw.githubusercontent.com/ewaldj/PiPrepE/refs/heads/main/piprepe_bootstrap.sh)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-readonly VERSION="0.11"
 set -euo pipefail
 
+readonly VERSION="0.12"
+
+readonly BOOTSTRAP_URL="https://raw.githubusercontent.com/ewaldj/PiPrepE/refs/heads/main/piprepe_bootstrap.sh"
 readonly PIPREPE_URL="https://raw.githubusercontent.com/ewaldj/PiPrepE/refs/heads/main/piprepe.sh"
 readonly BOOTSTRAP_TMPFILE="/tmp/piprepe_bootstrap_$$.sh"
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# When called via bash <(wget ...) the script has no real path on disk.
-# To allow re-execution as root (sudo / su), we write ourselves to a
-# temp file first, then re-exec from there.
+# If not root: download ourselves to a real temp file, then re-exec as root
+# via sudo (Raspberry Pi) or su (Debian without sudo).
+# This is necessary because bash <(wget ...) gives us no real path on disk,
+# so sudo/su cannot re-execute $0 directly.
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 if [[ "${EUID}" -ne 0 ]]; then
 
-    # If $0 is not a real file (e.g. /dev/fd/62), save ourselves to disk first
-    if [[ ! -f "$0" ]]; then
-        # bash exposes the script source on fd 255 when using process substitution
-        cp "/proc/$$/fd/255" "$BOOTSTRAP_TMPFILE" 2>/dev/null || {
-            printf '%s\n' "[bootstrap] ERROR: Could not save bootstrap script to a temporary file." >&2
-            printf '%s\n' "[bootstrap] Please run as root directly: su -c 'bash <(wget ...)' root" >&2
-            exit 1
-        }
-        chmod +x "$BOOTSTRAP_TMPFILE"
-        exec bash "$BOOTSTRAP_TMPFILE" "$@"
-    fi
+    printf '%s\n' "[bootstrap] Downloading bootstrap to temp file for privilege escalation..."
+    wget --header="Cache-Control: no-cache" --no-check-certificate -qO "$BOOTSTRAP_TMPFILE" "$BOOTSTRAP_URL"
+    chmod +x "$BOOTSTRAP_TMPFILE"
 
-    # Re-execute as root via sudo or su
     if command -v sudo >/dev/null 2>&1; then
         printf '%s\n' "[bootstrap] Root privileges required. Please enter your sudo password."
-        exec sudo --preserve-env=TERM bash "$0" "$@"
+        exec sudo --preserve-env=TERM bash "$BOOTSTRAP_TMPFILE" "$@"
     else
-        printf '%s\n' "[bootstrap] sudo not found. Please enter the root password (su)."
-        exec su -c "bash '$0'" root
+        printf '%s\n' "[bootstrap] sudo not found. Please enter the root password."
+        exec su -c "bash '$BOOTSTRAP_TMPFILE'" root
     fi
 
 fi
@@ -53,7 +47,6 @@ fi
 # From here on we are root
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Clean up temp file if we created one
 [[ -f "$BOOTSTRAP_TMPFILE" ]] && rm -f "$BOOTSTRAP_TMPFILE"
 
 install_prerequisites() {
