@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.6"
+readonly VERSION="0.7"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -1047,7 +1047,6 @@ Would you like to reboot the system now? [y/N]: '
 
 build_summary_message() {
     local reboot_note="No reboot is required right now."
-    local skipped_summary="None"
     local new_user_summary="Skipped"
     local gui_summary="No"
 
@@ -1060,29 +1059,38 @@ build_summary_message() {
     fi
 
     if [[ "$ROOTFS_EXPANSION_REQUESTED" == "true" ]]; then
-        reboot_note="A manual reboot is recommended later so the filesystem expansion and any pending system changes can fully take effect. The script did not reboot automatically."
+        reboot_note="Reboot recommended - filesystem expansion pending."
     elif [[ -f "/var/run/reboot-required" ]]; then
-        reboot_note="A manual reboot is recommended later because updates require it. The script did not reboot automatically."
+        reboot_note="Reboot recommended - pending package updates require it."
     fi
+
+    printf '+----------------------------------------------------------------------------+\n'
+    printf ' Setup completed successfully\n'
+    printf '+----------------------------------------------------------------------------+\n'
+    printf ' Invoking user         : %s\n' "$INVOKING_USERNAME"
+    printf ' New admin user        : %s\n' "$new_user_summary"
+    printf ' GUI tools installed   : %s\n' "$gui_summary"
+    printf ' Wireshark group user  : %s\n' "${WIRESHARK_TARGET_USERNAME:-none}"
+    printf ' Timezone              : %s\n' "$DEFAULT_TIMEZONE"
+    printf ' Live log file         : %s\n' "$LOG_FILE"
+    printf ' GitHub tools          : %s\n' "$LOCAL_BIN_DIR"
+    printf ' GitHub .deb source    : %s\n' "$GITHUB_PACKAGES_REPO_PAGE"
+    printf ' System alias          : %s\n' "$BASH_ALIAS_LINE"
+    printf ' Desktop keyboard      : %s\n' "German (Austria)"
+    printf '+----------------------------------------------------------------------------+\n'
 
     if ((${#SKIPPED_ITEMS[@]} > 0)); then
-        skipped_summary="$(printf '%s\n' "${SKIPPED_ITEMS[@]}" | sort -u | awk 'BEGIN { ORS = "; " } { print }')"
-        skipped_summary="${skipped_summary%; }"
+        printf ' Skipped items:\n'
+        while IFS= read -r item; do
+            printf '   - %s\n' "$item"
+        done < <(printf '%s\n' "${SKIPPED_ITEMS[@]}" | sort -u)
+    else
+        printf ' Skipped items         : None\n'
     fi
 
-    printf 'Setup completed successfully.\n\nInvoking user: %s\nNew admin user: %s\nGUI tools installed: %s\nWireshark group target: %s\nTimezone: %s\nLive log file: %s\nGitHub tools installed to: %s\nGitHub .deb source: %s\nSystem alias: %s\nDesktop keyboard for new user: %s\n\nSkipped items: %s\n\n%s' \
-        "$INVOKING_USERNAME" \
-        "$new_user_summary" \
-        "$gui_summary" \
-        "${WIRESHARK_TARGET_USERNAME:-none}" \
-        "$DEFAULT_TIMEZONE" \
-        "$LOG_FILE" \
-        "$LOCAL_BIN_DIR" \
-        "$GITHUB_PACKAGES_REPO_PAGE" \
-        "$BASH_ALIAS_LINE" \
-        "German (Austria)" \
-        "$skipped_summary" \
-        "$reboot_note"
+    printf '+----------------------------------------------------------------------------+\n'
+    printf ' %s\n' "$reboot_note"
+    printf '+----------------------------------------------------------------------------+\n'
 }
 
 main() {
@@ -1126,7 +1134,9 @@ main() {
     install_custom_github_tools
     configure_user_customizations
 
-    printf '\n%s\n\n' "$(build_summary_message)"
+    printf '\n'
+    build_summary_message
+    printf '\n'
     prompt_for_reboot
 }
 
