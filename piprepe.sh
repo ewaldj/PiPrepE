@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.7"
+readonly VERSION="0.8"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -260,40 +260,59 @@ display_startup_overview() {
     cat <<EOF_OVERVIEW
 
 +----------------------------------------------------------------------------+
-| Raspberry Pi Network Toolkit
+| PiPrepE - Pi Preparation Easy
 | Prepared by Ewald Jeitler
 | https://www.jeitler.guru
 +----------------------------------------------------------------------------+
-| Installed tools overview - partial list only
+| What this script does
 +----------------------------------------------------------------------------+
 |
-| Tools by Ewald Jeitler
-|   eping       High-performance tool using fping and Python to test
-|               thousands of hosts in parallel with integrated logging.
-|   epinga      Tool for analyzing eping log files.
-|   esplit      Tool for splitting large log files for epinga analysis.
-|   muxpi       tmux-based Raspberry Pi helper for running iperf(3) and
-|               other CLI tools in parallel test sessions with logging.
-|   nm-e        A simplified interface for nmcli 
+| System setup
+|   - apt update + upgrade (non-interactive, no prompts)
+|   - Timezone set to Europe/Vienna, NTP enabled
+|   - System-wide shell alias: ll='ls -la --color=auto'
+|   - unattended-upgrades configured for automatic security updates
+|   - Raspberry Pi specific settings (if raspi-config present):
+|     boot mode, VNC, filesystem expansion
+|
+| User management
+|   - Optional: create a new admin user with password (sudo group)
+|   - Invoking user added to sudo group if not already a member
+|   - Wireshark group membership for the target user
+|   - joe + tmux config applied per user
+|
+| Base tools installed
+|   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
+|   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
+|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog
+|
+| GUI tools (optional, asked at setup)
+|   xfce4 + lightdm   Desktop environment (installed if no GUI present)
+|   wireshark          GUI packet analyzer
+|   VS Code            code / code-oss editor
+|   remmina            Remote desktop client
+|   zenmap             Nmap GUI frontend
+|   xrdp               RDP server for remote desktop access
+|
+| Custom tools by Ewald Jeitler (installed to /usr/local/bin)
+|   eping       Parallel host reachability tester using fping + Python
+|   epinga      Log analyzer for eping output
+|   esplit      Log splitter for epinga analysis
+|   muxpi       tmux helper for iperf(3) parallel test sessions
+|   nm-e        Simplified nmcli interface
 |
 | Performance testing
-|   iperf       Classic network throughput tester.
-|   iperf3      Modern client/server bandwidth measurement tool.
+|   iperf        Classic network throughput tester
+|   iperf3       Modern bandwidth measurement tool (from GitHub .deb)
 |
-| Monitoring and packet analysis
-|   btop        Interactive monitor for CPU, memory, and network usage.
-|   tcpdump     Command-line packet capture and inspection tool.
-|   tcpreplay   Replay captured packets onto an interface.
-|   netsniff-ng High-performance networking toolkit.
-|   mausezahn   Packet generator included with netsniff-ng.
-|
-| Additional package source
-|   GitHub .deb packages from PiPrepE/packages are installed automatically.
-|   Current example: iperf3 3.20 arm64 packages from the repository folder.
+| GitHub .deb packages
+|   Packages in PiPrepE/packages are installed automatically
+|   (architecture-matched, e.g. iperf3 3.20 arm64)
 |
 | Useful notes
-|   - Use 'll' for a colored long directory listing.
-|   - All tools listed above can be run without file extensions.
+|   - All custom tools can be run without file extensions
+|   - Use 'll' for a colored long directory listing
+|   - Full log written to /var/log/piprepe.log
 +----------------------------------------------------------------------------+
 | Enjoy the tools, have fun with network performance testing,
 | and have a perfect day! - Ewald
@@ -761,40 +780,59 @@ EOF_ALIAS
 create_custom_motd() {
     cat >"$MOTD_FILE" <<'EOF_MOTD'
 +----------------------------------------------------------------------------+
-| Raspberry Pi Network Toolkit
+| PiPrepE - Pi Preparation Easy
 | Prepared by Ewald Jeitler
 | https://www.jeitler.guru
 +----------------------------------------------------------------------------+
-| Installed tools overview - partial list only
+| What this script does
 +----------------------------------------------------------------------------+
 |
-| Tools by Ewald Jeitler
-|   eping       High-performance tool using fping and Python to test
-|               thousands of hosts in parallel with integrated logging.
-|   epinga      Tool for analyzing eping log files.
-|   esplit      Tool for splitting large log files for epinga analysis.
-|   muxpi       tmux-based Raspberry Pi helper for running iperf(3) and
-|               other CLI tools in parallel test sessions with logging.
-|   nm-e        A simplified interface for nmcli 
+| System setup
+|   - apt update + upgrade (non-interactive, no prompts)
+|   - Timezone set to Europe/Vienna, NTP enabled
+|   - System-wide shell alias: ll='ls -la --color=auto'
+|   - unattended-upgrades configured for automatic security updates
+|   - Raspberry Pi specific settings (if raspi-config present):
+|     boot mode, VNC, filesystem expansion
+|
+| User management
+|   - Optional: create a new admin user with password (sudo group)
+|   - Invoking user added to sudo group if not already a member
+|   - Wireshark group membership for the target user
+|   - joe + tmux config applied per user
+|
+| Base tools installed
+|   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
+|   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
+|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog
+|
+| GUI tools (optional, asked at setup)
+|   xfce4 + lightdm   Desktop environment (installed if no GUI present)
+|   wireshark          GUI packet analyzer
+|   VS Code            code / code-oss editor
+|   remmina            Remote desktop client
+|   zenmap             Nmap GUI frontend
+|   xrdp               RDP server for remote desktop access
+|
+| Custom tools by Ewald Jeitler (installed to /usr/local/bin)
+|   eping       Parallel host reachability tester using fping + Python
+|   epinga      Log analyzer for eping output
+|   esplit      Log splitter for epinga analysis
+|   muxpi       tmux helper for iperf(3) parallel test sessions
+|   nm-e        Simplified nmcli interface
 |
 | Performance testing
-|   iperf       Classic network throughput tester.
-|   iperf3      Modern client/server bandwidth measurement tool.
+|   iperf        Classic network throughput tester
+|   iperf3       Modern bandwidth measurement tool (from GitHub .deb)
 |
-| Monitoring and packet analysis
-|   btop        Interactive monitor for CPU, memory, and network usage.
-|   tcpdump     Command-line packet capture and inspection tool.
-|   tcpreplay   Replay captured packets onto an interface.
-|   netsniff-ng High-performance networking toolkit.
-|   mausezahn   Packet generator included with netsniff-ng.
-|
-| Additional package source
-|   GitHub .deb packages from PiPrepE/packages are installed automatically.
-|   Current example: iperf3 3.20 arm64 packages from the repository folder.
+| GitHub .deb packages
+|   Packages in PiPrepE/packages are installed automatically
+|   (architecture-matched, e.g. iperf3 3.20 arm64)
 |
 | Useful notes
-|   - Use 'll' for a colored long directory listing.
-|   - All tools listed above can be run without file extensions.
+|   - All custom tools can be run without file extensions
+|   - Use 'll' for a colored long directory listing
+|   - Full log written to /var/log/piprepe.log
 +----------------------------------------------------------------------------+
 | Enjoy the tools, have fun with network performance testing,
 | and have a perfect day! - Ewald
@@ -845,6 +883,19 @@ configure_user_accounts() {
         fi
     else
         print_status "Skipping new user creation because no username was provided."
+    fi
+
+    # Add the invoking user to the sudo group if not already a member
+    if [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root" ]]; then
+        if id "$INVOKING_USERNAME" >/dev/null 2>&1; then
+            if getent group sudo >/dev/null 2>&1; then
+                if ! id -nG "$INVOKING_USERNAME" 2>/dev/null | grep -qw sudo; then
+                    run_logged_command "Adding invoking user ${INVOKING_USERNAME} to sudo group..." /usr/sbin/usermod -aG sudo "$INVOKING_USERNAME"
+                else
+                    print_status "Invoking user ${INVOKING_USERNAME} is already in the sudo group."
+                fi
+            fi
+        fi
     fi
 
     add_user_to_wireshark_group "$WIRESHARK_TARGET_USERNAME"
