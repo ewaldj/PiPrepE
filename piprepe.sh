@@ -31,7 +31,7 @@ readonly AUTHOR_NAME="Ewald Jeitler"
 readonly AUTHOR_WEBSITE="https://www.jeitler.guru"
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly MOTD_FILE="/etc/motd"
-readonly MOTD_NETWORK_SCRIPT="/etc/update-motd.d/10-piprepe-network"
+readonly MOTD_NETWORK_SCRIPT="/etc/update-motd.d/99-piprepe-network"
 readonly JOE_INCLUDE_PATH="/etc/joe/joerc"
 readonly GITHUB_PACKAGES_API_URL="https://api.github.com/repos/ewaldj/PiPrepE/contents/packages?ref=main"
 readonly GITHUB_PACKAGES_REPO_PAGE="https://github.com/ewaldj/PiPrepE/tree/main/packages"
@@ -261,62 +261,33 @@ display_startup_overview() {
     cat <<EOF_OVERVIEW
 
 +----------------------------------------------------------------------------+
-| PiPrepE - Pi Preparation Easy
-| Prepared by Ewald Jeitler
-| https://www.jeitler.guru
+| PiPrepE - Pi Preparation Easy                          v${VERSION}
+| Ewald Jeitler  https://www.jeitler.guru
 +----------------------------------------------------------------------------+
-| What this script does
+| Base tools
+|   joe  tmux  screen  curl  nmap  fping  net-tools  iptables
+|   tcpdump  tcpreplay  netsniff-ng  btop  iperf  dialog  inetutils
+|
+| GUI tools (optional)
+|   xfce4+lightdm  xrdp  wireshark  VS Code  remmina  zenmap
+|   Keyboard layout auto-applied from /etc/default/keyboard
+|
+| Custom tools -> /usr/local/bin  (usable without extension)
+|   eping  epinga  esplit  muxpi  nm-e
+|
+| GitHub .deb  ->  iperf3 (arch-matched from PiPrepE/packages)
+|
+| User setup
+|   Invoking user : sudo + wireshark groups, joe + tmux configured
+|   New user      : sudo + wireshark groups, joe + tmux configured
+|                   created with system defaults (locale/shell)
+|
+| System
+|   apt update+upgrade, unattended-upgrades, timezone Vienna, NTP
+|   ll alias, log -> /var/log/piprepe.log
+|   Raspberry Pi: boot mode, VNC, filesystem expansion (if raspi-config)
 +----------------------------------------------------------------------------+
-|
-| System setup
-|   - apt update + upgrade (non-interactive, no prompts)
-|   - Timezone set to Europe/Vienna, NTP enabled
-|   - System-wide shell alias: ll='ls -la --color=auto'
-|   - unattended-upgrades configured for automatic security updates
-|   - Raspberry Pi specific settings (if raspi-config present):
-|     boot mode, VNC, filesystem expansion
-|
-| User management
-|   - Optional: create a new admin user with password (sudo group)
-|   - Invoking user added to sudo group if not already a member
-|   - Wireshark group membership for the target user
-|   - joe + tmux config applied per user
-|
-| Base tools installed
-|   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
-|   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
-|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog
-|
-| GUI tools (optional, asked at setup)
-|   xfce4 + lightdm   Desktop environment (installed if no GUI present)
-|   wireshark          GUI packet analyzer
-|   VS Code            code / code-oss editor
-|   remmina            Remote desktop client
-|   zenmap             Nmap GUI frontend
-|   xrdp               RDP server for remote desktop access
-|
-| Custom tools by Ewald Jeitler (installed to /usr/local/bin)
-|   eping       Parallel host reachability tester using fping + Python
-|   epinga      Log analyzer for eping output
-|   esplit      Log splitter for epinga analysis
-|   muxpi       tmux helper for iperf(3) parallel test sessions
-|   nm-e        Simplified nmcli interface
-|
-| Performance testing
-|   iperf        Classic network throughput tester
-|   iperf3       Modern bandwidth measurement tool (from GitHub .deb)
-|
-| GitHub .deb packages
-|   Packages in PiPrepE/packages are installed automatically
-|   (architecture-matched, e.g. iperf3 3.20 arm64)
-|
-| Useful notes
-|   - All custom tools can be run without file extensions
-|   - Use 'll' for a colored long directory listing
-|   - Full log written to /var/log/piprepe.log
-+----------------------------------------------------------------------------+
-| Enjoy the tools, have fun with network performance testing,
-| and have a perfect day! - Ewald
+| Have fun with network performance testing! - Ewald
 +----------------------------------------------------------------------------+
 EOF_OVERVIEW
 }
@@ -882,71 +853,51 @@ create_custom_motd() {
     cat >"$MOTD_FILE" <<'EOF_MOTD'
 +----------------------------------------------------------------------------+
 | PiPrepE - Pi Preparation Easy
-| Prepared by Ewald Jeitler
-| https://www.jeitler.guru
+| Ewald Jeitler  https://www.jeitler.guru
 +----------------------------------------------------------------------------+
-| What this script does
+| Base tools
+|   joe  tmux  screen  curl  nmap  fping  net-tools  iptables
+|   tcpdump  tcpreplay  netsniff-ng  btop  iperf  dialog  inetutils
+|
+| GUI tools (optional)
+|   xfce4+lightdm  xrdp  wireshark  VS Code  remmina  zenmap
+|   Keyboard layout auto-applied from /etc/default/keyboard
+|
+| Custom tools -> /usr/local/bin  (usable without extension)
+|   eping  epinga  esplit  muxpi  nm-e
+|
+| GitHub .deb  ->  iperf3 (arch-matched from PiPrepE/packages)
+|
+| User setup
+|   Invoking user : sudo + wireshark groups, joe + tmux configured
+|   New user      : sudo + wireshark groups, joe + tmux configured
+|                   created with system defaults (locale/shell)
+|
+| System
+|   apt update+upgrade, unattended-upgrades, timezone Vienna, NTP
+|   ll alias, log -> /var/log/piprepe.log
+|   Raspberry Pi: boot mode, VNC, filesystem expansion (if raspi-config)
 +----------------------------------------------------------------------------+
-|
-| System setup
-|   - apt update + upgrade (non-interactive, no prompts)
-|   - Timezone set to Europe/Vienna, NTP enabled
-|   - System-wide shell alias: ll='ls -la --color=auto'
-|   - unattended-upgrades configured for automatic security updates
-|   - Raspberry Pi specific settings (if raspi-config present):
-|     boot mode, VNC, filesystem expansion
-|
-| User management
-|   - Optional: create a new admin user with password (sudo group)
-|   - Invoking user added to sudo group if not already a member
-|   - Wireshark group membership for the target user
-|   - joe + tmux config applied per user
-|
-| Base tools installed
-|   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
-|   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
-|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog
-|
-| GUI tools (optional, asked at setup)
-|   xfce4 + lightdm   Desktop environment (installed if no GUI present)
-|   wireshark          GUI packet analyzer
-|   VS Code            code / code-oss editor
-|   remmina            Remote desktop client
-|   zenmap             Nmap GUI frontend
-|   xrdp               RDP server for remote desktop access
-|
-| Custom tools by Ewald Jeitler (installed to /usr/local/bin)
-|   eping       Parallel host reachability tester using fping + Python
-|   epinga      Log analyzer for eping output
-|   esplit      Log splitter for epinga analysis
-|   muxpi       tmux helper for iperf(3) parallel test sessions
-|   nm-e        Simplified nmcli interface
-|
-| Performance testing
-|   iperf        Classic network throughput tester
-|   iperf3       Modern bandwidth measurement tool (from GitHub .deb)
-|
-| GitHub .deb packages
-|   Packages in PiPrepE/packages are installed automatically
-|   (architecture-matched, e.g. iperf3 3.20 arm64)
-|
-| Useful notes
-|   - All custom tools can be run without file extensions
-|   - Use 'll' for a colored long directory listing
-|   - Full log written to /var/log/piprepe.log
+| Have fun with network performance testing! - Ewald
 +----------------------------------------------------------------------------+
-| Enjoy the tools, have fun with network performance testing,
-| and have a perfect day! - Ewald
-+----------------------------------------------------------------------------+
-
 EOF_MOTD
 }
 
 configure_user_customizations() {
+    local username=""
+
+    for username in "$INVOKING_USERNAME"; do
+        if id "$username" >/dev/null 2>&1; then
+            run_logged_command "Configuring joe for ${username}..." configure_joe_for_user "$username"
+            run_logged_command "Configuring tmux for ${username}..." configure_tmux_for_user "$username"
+        fi
+    done
+
     if [[ "$USER_CREATION_REQUESTED" == "true" && -n "$TARGET_USERNAME" ]]; then
         if id "$TARGET_USERNAME" >/dev/null 2>&1; then
             run_logged_command "Configuring joe for ${TARGET_USERNAME}..." configure_joe_for_user "$TARGET_USERNAME"
             run_logged_command "Configuring tmux for ${TARGET_USERNAME}..." configure_tmux_for_user "$TARGET_USERNAME"
+            run_logged_command "Configuring Raspberry Pi desktop keyboard for ${TARGET_USERNAME}..." configure_desktop_keyboard_for_user "$TARGET_USERNAME"
         fi
     fi
 
@@ -963,7 +914,7 @@ configure_user_accounts() {
         if id "$TARGET_USERNAME" >/dev/null 2>&1; then
             print_status "Updating existing user ${TARGET_USERNAME}..."
         else
-            run_logged_command "Creating user ${TARGET_USERNAME}..." /usr/sbin/useradd -m "$TARGET_USERNAME"
+            run_logged_command "Creating user ${TARGET_USERNAME}..." /usr/sbin/useradd -m -s /bin/bash "$TARGET_USERNAME"
         fi
 
         run_logged_command "Setting password for ${TARGET_USERNAME}..." set_user_password
@@ -991,11 +942,6 @@ configure_user_accounts() {
     fi
 
     add_user_to_wireshark_group "$WIRESHARK_TARGET_USERNAME"
-
-    # Also add invoking user to wireshark group if different from WIRESHARK_TARGET_USERNAME
-    if [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root" && "$INVOKING_USERNAME" != "$WIRESHARK_TARGET_USERNAME" ]]; then
-        add_user_to_wireshark_group "$INVOKING_USERNAME"
-    fi
 
     unset TARGET_PASSWORD
     TARGET_PASSWORD=""
