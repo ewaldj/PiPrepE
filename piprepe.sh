@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.11"
+readonly VERSION="0.12"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -943,20 +943,10 @@ EOF_MOTD
 }
 
 configure_user_customizations() {
-    local username=""
-
-    for username in "$INVOKING_USERNAME"; do
-        if id "$username" >/dev/null 2>&1; then
-            run_logged_command "Configuring joe for ${username}..." configure_joe_for_user "$username"
-            run_logged_command "Configuring tmux for ${username}..." configure_tmux_for_user "$username"
-        fi
-    done
-
     if [[ "$USER_CREATION_REQUESTED" == "true" && -n "$TARGET_USERNAME" ]]; then
         if id "$TARGET_USERNAME" >/dev/null 2>&1; then
             run_logged_command "Configuring joe for ${TARGET_USERNAME}..." configure_joe_for_user "$TARGET_USERNAME"
             run_logged_command "Configuring tmux for ${TARGET_USERNAME}..." configure_tmux_for_user "$TARGET_USERNAME"
-            run_logged_command "Configuring Raspberry Pi desktop keyboard for ${TARGET_USERNAME}..." configure_desktop_keyboard_for_user "$TARGET_USERNAME"
         fi
     fi
 
@@ -973,7 +963,7 @@ configure_user_accounts() {
         if id "$TARGET_USERNAME" >/dev/null 2>&1; then
             print_status "Updating existing user ${TARGET_USERNAME}..."
         else
-            run_logged_command "Creating user ${TARGET_USERNAME}..." /usr/sbin/useradd -m -s /bin/bash "$TARGET_USERNAME"
+            run_logged_command "Creating user ${TARGET_USERNAME}..." /usr/sbin/useradd -m "$TARGET_USERNAME"
         fi
 
         run_logged_command "Setting password for ${TARGET_USERNAME}..." set_user_password
@@ -1001,6 +991,11 @@ configure_user_accounts() {
     fi
 
     add_user_to_wireshark_group "$WIRESHARK_TARGET_USERNAME"
+
+    # Also add invoking user to wireshark group if different from WIRESHARK_TARGET_USERNAME
+    if [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root" && "$INVOKING_USERNAME" != "$WIRESHARK_TARGET_USERNAME" ]]; then
+        add_user_to_wireshark_group "$INVOKING_USERNAME"
+    fi
 
     unset TARGET_PASSWORD
     TARGET_PASSWORD=""
