@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.5"
+readonly VERSION="0.53"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -434,7 +434,13 @@ is_package_available() {
     local candidate_version=""
 
     candidate_version="$(apt-cache policy "$package_name" 2>/dev/null | awk '/Candidate:/ {print $2}')" || true
-    [[ -n "$candidate_version" && "$candidate_version" != "(none)" ]]
+
+    if [[ -n "$candidate_version" && "$candidate_version" != "(none)" ]]; then
+        return 0
+    fi
+
+    # Fallback: apt-get dry-run is more reliable when apt-cache policy returns stale data
+    apt_noninteractive install --dry-run "$package_name" >/dev/null 2>&1
 }
 
 resolve_package_name() {
@@ -1098,6 +1104,7 @@ main() {
 
     run_logged_command "Updating package lists..." apt_noninteractive update
     run_logged_command "Upgrading installed packages..." apt_noninteractive upgrade -y
+    run_logged_command "Refreshing package lists after upgrade..." apt_noninteractive update
 
     install_package_group "Installing base tools..." "${BASIC_PACKAGES[@]}"
 
