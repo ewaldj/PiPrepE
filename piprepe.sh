@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.23"
+readonly VERSION="0.24"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -27,14 +27,19 @@ readonly APT_CONFIG_DIR="/etc/apt/apt.conf.d"
 readonly NEEDRESTART_CONFIG_DIR="/etc/needrestart/conf.d"
 readonly LOCAL_BIN_DIR="/usr/local/bin"
 readonly DEFAULT_TIMEZONE="Europe/Vienna"
+readonly AUTHOR_NAME="Ewald Jeitler"
+readonly AUTHOR_WEBSITE="https://www.jeitler.guru"
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly MOTD_FILE="/etc/motd"
 readonly MOTD_NETWORK_SCRIPT="/etc/update-motd.d/10-piprepe-network"
+readonly JOE_INCLUDE_PATH="/etc/joe/joerc"
 readonly GITHUB_PACKAGES_API_URL="https://api.github.com/repos/ewaldj/PiPrepE/contents/packages?ref=main"
 readonly GITHUB_PACKAGES_REPO_PAGE="https://github.com/ewaldj/PiPrepE/tree/main/packages"
 readonly TMUX_CONFIG_CONTENT=$'set-option -g history-limit 100000\nset-option -g mouse on\n'
 readonly JOE_CONFIG_CONTENT=$':include /etc/joe/joerc\n-nobackups\n--wordwrap\n'
 readonly BASH_ALIAS_LINE="alias ll='ls -la --color=auto'"
+readonly DESKTOP_KEYBOARD_LAYOUT="at"
+readonly DESKTOP_KEYBOARD_MODEL="pc105"
 readonly BASIC_PACKAGES=(
     "joe"
     "dialog"
@@ -580,55 +585,6 @@ install_desktop_if_missing() {
 }
 
 
-configure_xrdp_keyboard() {
-    # xrdp starts a fresh X session and ignores /etc/default/keyboard entirely.
-    # Writing ~/.xsessionrc with setxkbmap is the only reliable fix.
-    local keyboard_file="/etc/default/keyboard"
-    local xkblayout="" xkbmodel="" xkbvariant=""
-
-    if [[ ! -f "$keyboard_file" ]]; then
-        SKIPPED_ITEMS+=("xrdp keyboard fix skipped: ${keyboard_file} not found")
-        return 0
-    fi
-
-    xkblayout="$( grep -E '^XKBLAYOUT=' "$keyboard_file" | cut -d= -f2 | tr -d '"')"
-    xkbmodel="$(  grep -E '^XKBMODEL='   "$keyboard_file" | cut -d= -f2 | tr -d '"')"
-    xkbvariant="$(grep -E '^XKBVARIANT=' "$keyboard_file" | cut -d= -f2 | tr -d '"')"
-
-    if [[ -z "$xkblayout" ]]; then
-        SKIPPED_ITEMS+=("xrdp keyboard fix skipped: XKBLAYOUT not set in ${keyboard_file}")
-        return 0
-    fi
-
-    local xsession_content="setxkbmap -model ${xkbmodel:-pc105} -layout ${xkblayout}"
-    if [[ -n "$xkbvariant" ]]; then
-        xsession_content="${xsession_content} -variant ${xkbvariant}"
-    fi
-
-    print_status "Writing xrdp keyboard fix (~/.xsessionrc): ${xsession_content}"
-
-    local u="" user_home=""
-    local users_to_configure=()
-
-    [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root" ]] &&         users_to_configure+=("$INVOKING_USERNAME")
-    [[ "$USER_CREATION_REQUESTED" == "true" && -n "$TARGET_USERNAME" ]] &&         users_to_configure+=("$TARGET_USERNAME")
-
-    for u in "${users_to_configure[@]}"; do
-        if id "$u" >/dev/null 2>&1; then
-            user_home="$(get_user_home_directory "$u")"
-            if [[ -n "$user_home" && -d "$user_home" ]]; then
-                # ~/.xsessionrc: sets keyboard layout at X session start
-                write_file_as_user "$u" "${user_home}/.xsessionrc" "$xsession_content"
-                print_status "xrdp keyboard fix written for ${u}: ${xsession_content}"
-
-                # ~/.xsession: forces xfce4 instead of Raspberry Pi OS default LXDE/Openbox
-                write_file_as_user "$u" "${user_home}/.xsession" "startxfce4"
-                print_status "xrdp session fix written for ${u}: startxfce4"
-            fi
-        fi
-    done
-}
-
 ensure_python3_available() {
     if ! command_exists python3; then
         run_logged_command "Installing Python 3 for GitHub-hosted content..." apt_noninteractive install -y python3
@@ -747,17 +703,11 @@ add_user_to_wireshark_group() {
         return 0
     fi
 
-    if ! getent group wireshark >/dev/null 2>&1; then
-        SKIPPED_ITEMS+=("Wireshark group missing for ${username} — wireshark not installed or GUI skipped")
-        return 0
+    if getent group wireshark >/dev/null 2>&1; then
+        run_logged_command "Adding ${username} to wireshark group..." /usr/sbin/usermod -aG wireshark "$username"
+    else
+        SKIPPED_ITEMS+=("Group missing: wireshark")
     fi
-
-    if id -nG "$username" 2>/dev/null | grep -qw wireshark; then
-        print_status "${username} is already in the wireshark group."
-        return 0
-    fi
-
-    run_logged_command "Adding ${username} to wireshark group..." /usr/sbin/usermod -aG wireshark "$username"
 }
 
 get_user_home_directory() {
@@ -829,6 +779,21 @@ configure_tmux_for_user() {
     write_file_as_user "$username" "${user_home}/.tmux.conf" "$TMUX_CONFIG_CONTENT"
 }
 
+configure_desktop_keyboard_for_user() {
+    local username="$1"
+    local user_home=""
+    local labwc_environment_path=""
+
+    user_home="$(get_user_home_directory "$username")"
+    if [[ -z "$user_home" ]]; then
+        SKIPPED_ITEMS+=("Could not determine home directory for desktop keyboard configuration: ${username}")
+        return 0
+    fi
+
+    labwc_environment_path="${user_home}/.config/labwc/environment"
+    write_file_as_user "$username" "$labwc_environment_path" \
+$'XKB_DEFAULT_MODEL='"${DESKTOP_KEYBOARD_MODEL}"$'\nXKB_DEFAULT_LAYOUT='"${DESKTOP_KEYBOARD_LAYOUT}"$'\nXKB_DEFAULT_VARIANT=\nXKB_DEFAULT_OPTIONS=\n'
+}
 
 configure_system_bash_aliases() {
     if [[ ! -f "$SYSTEM_BASHRC" ]]; then
@@ -977,6 +942,47 @@ create_custom_motd() {
 EOF_MOTD
 }
 
+configure_xrdp_keyboard() {
+    # xrdp ignores /etc/default/keyboard — ~/.xsessionrc + ~/.xsession are the only reliable fix.
+    local keyboard_file="/etc/default/keyboard"
+    local xkblayout="" xkbmodel="" xkbvariant=""
+
+    if [[ ! -f "$keyboard_file" ]]; then
+        SKIPPED_ITEMS+=("xrdp keyboard fix skipped: ${keyboard_file} not found")
+        return 0
+    fi
+
+    xkblayout="$( grep -E '^XKBLAYOUT=' "$keyboard_file" | cut -d= -f2 | tr -d '"' )"
+    xkbmodel="$(  grep -E '^XKBMODEL='   "$keyboard_file" | cut -d= -f2 | tr -d '"' )"
+    xkbvariant="$(grep -E '^XKBVARIANT=' "$keyboard_file" | cut -d= -f2 | tr -d '"' )"
+
+    if [[ -z "$xkblayout" ]]; then
+        SKIPPED_ITEMS+=("xrdp keyboard fix skipped: XKBLAYOUT not set in ${keyboard_file}")
+        return 0
+    fi
+
+    local setxkbmap_cmd="setxkbmap -model ${xkbmodel:-pc105} -layout ${xkblayout}"
+    [[ -n "$xkbvariant" ]] && setxkbmap_cmd="${setxkbmap_cmd} -variant ${xkbvariant}"
+
+    print_status "xrdp keyboard: ${setxkbmap_cmd}"
+
+    local u="" user_home=""
+    local users_to_configure=()
+    [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root" ]] &&         users_to_configure+=("$INVOKING_USERNAME")
+    [[ "$USER_CREATION_REQUESTED" == "true" && -n "$TARGET_USERNAME" ]] &&         users_to_configure+=("$TARGET_USERNAME")
+
+    for u in "${users_to_configure[@]}"; do
+        if id "$u" >/dev/null 2>&1; then
+            user_home="$(get_user_home_directory "$u")"
+            if [[ -n "$user_home" && -d "$user_home" ]]; then
+                write_file_as_user "$u" "${user_home}/.xsessionrc" "$setxkbmap_cmd"
+                write_file_as_user "$u" "${user_home}/.xsession"   "startxfce4"
+                print_status "xrdp keyboard+session written for ${u}"
+            fi
+        fi
+    done
+}
+
 configure_user_customizations() {
     local username=""
 
@@ -995,7 +1001,7 @@ configure_user_customizations() {
     fi
 
     if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then
-        run_logged_command "Configuring xrdp keyboard layout..." configure_xrdp_keyboard
+        run_logged_command "Configuring xrdp keyboard and session..." configure_xrdp_keyboard
     fi
 
     run_logged_command "Configuring system-wide shell aliases..." configure_system_bash_aliases
@@ -1038,7 +1044,6 @@ configure_user_accounts() {
         fi
     fi
 
-    # Add WIRESHARK_TARGET_USERNAME (new user or invoking user) to wireshark group
     add_user_to_wireshark_group "$WIRESHARK_TARGET_USERNAME"
 
     # Always also add the invoking user if different from WIRESHARK_TARGET_USERNAME
@@ -1267,7 +1272,11 @@ build_summary_message() {
     printf ' Invoking user         : %s\n' "$INVOKING_USERNAME"
     printf ' New admin user        : %s\n' "$new_user_summary"
     printf ' GUI tools installed   : %s\n' "$gui_summary"
-    printf ' Wireshark group user  : %s\n' "${WIRESHARK_TARGET_USERNAME:-none}"
+    if [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root"        && "$INVOKING_USERNAME" != "$WIRESHARK_TARGET_USERNAME" ]]; then
+        printf ' Wireshark group users : %s, %s\n' "${WIRESHARK_TARGET_USERNAME:-none}" "$INVOKING_USERNAME"
+    else
+        printf ' Wireshark group user  : %s\n' "${WIRESHARK_TARGET_USERNAME:-none}"
+    fi
     printf ' Timezone              : %s\n' "$DEFAULT_TIMEZONE"
     printf ' Live log file         : %s\n' "$LOG_FILE"
     printf ' GitHub tools          : %s\n' "$LOCAL_BIN_DIR"
