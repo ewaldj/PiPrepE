@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.22"
+readonly VERSION="0.23"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -747,11 +747,17 @@ add_user_to_wireshark_group() {
         return 0
     fi
 
-    if getent group wireshark >/dev/null 2>&1; then
-        run_logged_command "Adding ${username} to wireshark group..." /usr/sbin/usermod -aG wireshark "$username"
-    else
-        SKIPPED_ITEMS+=("Group missing: wireshark")
+    if ! getent group wireshark >/dev/null 2>&1; then
+        SKIPPED_ITEMS+=("Wireshark group missing for ${username} — wireshark not installed or GUI skipped")
+        return 0
     fi
+
+    if id -nG "$username" 2>/dev/null | grep -qw wireshark; then
+        print_status "${username} is already in the wireshark group."
+        return 0
+    fi
+
+    run_logged_command "Adding ${username} to wireshark group..." /usr/sbin/usermod -aG wireshark "$username"
 }
 
 get_user_home_directory() {
@@ -1032,7 +1038,13 @@ configure_user_accounts() {
         fi
     fi
 
+    # Add WIRESHARK_TARGET_USERNAME (new user or invoking user) to wireshark group
     add_user_to_wireshark_group "$WIRESHARK_TARGET_USERNAME"
+
+    # Always also add the invoking user if different from WIRESHARK_TARGET_USERNAME
+    if [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root"        && "$INVOKING_USERNAME" != "$WIRESHARK_TARGET_USERNAME" ]]; then
+        add_user_to_wireshark_group "$INVOKING_USERNAME"
+    fi
 
     unset TARGET_PASSWORD
     TARGET_PASSWORD=""
