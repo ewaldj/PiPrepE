@@ -4,7 +4,7 @@ Built and tested on Raspberry Pi OS (Trixie). It will probably run on Debian and
 
 ## Copy this command into your Raspberry Pi shell to start the installation.
 ```
-sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ewaldj/PiPrepE/refs/heads/main/piprepe.sh)"
+bash <(wget --header="Cache-Control: no-cache" --no-check-certificate -qO- https://raw.githubusercontent.com/ewaldj/PiPrepE/refs/heads/main/piprepe_bootstrap.sh)
 ```
 
 ## THIS IS A BETA VERSION! 
