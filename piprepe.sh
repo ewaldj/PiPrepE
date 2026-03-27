@@ -62,6 +62,7 @@ readonly BASIC_PACKAGES=(
     "tcpreplay"
     "bc"
     "network-manager"
+    "ufw"
 )
 
 readonly GUI_PACKAGES=(
@@ -261,8 +262,7 @@ display_startup_overview() {
     cat <<EOF_OVERVIEW
 
 +----------------------------------------------------------------------------+
-| PiPrepE - Pi Preparation Easy
-| Prepared by Ewald Jeitler
+| PiPrepE - Pi Preparation Easy - by Ewald Jeitler
 | https://www.jeitler.guru
 +----------------------------------------------------------------------------+
 | What this script does
@@ -285,15 +285,10 @@ display_startup_overview() {
 | Base tools installed
 |   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
 |   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
-|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog
+|   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3 dialog, ufw
 |
 | GUI tools (optional, asked at setup)
-|   xfce4 + lightdm   Desktop environment (installed if no GUI present)
-|   wireshark          GUI packet analyzer
-|   VS Code            code / code-oss editor
-|   remmina            Remote desktop client
-|   zenmap             Nmap GUI frontend
-|   xrdp               RDP server for remote desktop access
+|   xfce4 + lightdm, wireshark,vs code, remmina,zenmap,xrdp 
 |
 | Custom tools by Ewald Jeitler (installed to /usr/local/bin)
 |   eping       Parallel host reachability tester using fping + Python
@@ -302,16 +297,11 @@ display_startup_overview() {
 |   muxpi       tmux helper for iperf(3) parallel test sessions
 |   nm-e        Simplified nmcli interface
 |
-| Performance testing
-|   iperf        Classic network throughput tester
-|   iperf3       Modern bandwidth measurement tool (from GitHub .deb)
-|
 | GitHub .deb packages
 |   Packages in PiPrepE/packages are installed automatically
 |   (architecture-matched, e.g. iperf3 3.20 arm64)
 |
 | Useful notes
-|   - All custom tools can be run without file extensions
 |   - Use 'll' for a colored long directory listing
 |   - Full log written to /var/log/piprepe.log
 +----------------------------------------------------------------------------+
@@ -881,39 +871,17 @@ EOF_NETWORK_MOTD
 create_custom_motd() {
     cat >"$MOTD_FILE" <<'EOF_MOTD'
 +----------------------------------------------------------------------------+
-| PiPrepE - Pi Preparation Easy
-| Prepared by Ewald Jeitler
+| PiPrepE - Pi Preparation Easy by Ewald Jeitler
 | https://www.jeitler.guru
 +----------------------------------------------------------------------------+
-| What this script does
-+----------------------------------------------------------------------------+
-|
-| System setup
-|   - apt update + upgrade (non-interactive, no prompts)
-|   - Timezone set to Europe/Vienna, NTP enabled
-|   - System-wide shell alias: ll='ls -la --color=auto'
-|   - unattended-upgrades configured for automatic security updates
-|   - Raspberry Pi specific settings (if raspi-config present):
-|     boot mode, VNC, filesystem expansion
-|
-| User management
-|   - Optional: create a new admin user with password (sudo group)
-|   - Invoking user added to sudo group if not already a member
-|   - Wireshark group membership for the target user
-|   - joe + tmux config applied per user
-|
 | Base tools installed
 |   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
 |   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
-|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog
+|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog, ufw,
+|   iperf, iperf3
 |
 | GUI tools (optional, asked at setup)
-|   xfce4 + lightdm   Desktop environment (installed if no GUI present)
-|   wireshark          GUI packet analyzer
-|   VS Code            code / code-oss editor
-|   remmina            Remote desktop client
-|   zenmap             Nmap GUI frontend
-|   xrdp               RDP server for remote desktop access
+|   xfce4 + lightdm, wireshark,vs code, remmina,zenmap,xrdp 
 |
 | Custom tools by Ewald Jeitler (installed to /usr/local/bin)
 |   eping       Parallel host reachability tester using fping + Python
@@ -922,18 +890,8 @@ create_custom_motd() {
 |   muxpi       tmux helper for iperf(3) parallel test sessions
 |   nm-e        Simplified nmcli interface
 |
-| Performance testing
-|   iperf        Classic network throughput tester
-|   iperf3       Modern bandwidth measurement tool (from GitHub .deb)
-|
-| GitHub .deb packages
-|   Packages in PiPrepE/packages are installed automatically
-|   (architecture-matched, e.g. iperf3 3.20 arm64)
-|
 | Useful notes
-|   - All custom tools can be run without file extensions
 |   - Use 'll' for a colored long directory listing
-|   - Full log written to /var/log/piprepe.log
 +----------------------------------------------------------------------------+
 | Enjoy the tools, have fun with network performance testing,
 | and have a perfect day! - Ewald
