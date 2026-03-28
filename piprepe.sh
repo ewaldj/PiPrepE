@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.27"
+readonly VERSION="0.28"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -292,11 +292,12 @@ display_startup_overview() {
 |   xfce4 + lightdm, wireshark,vs code, remmina,zenmap,xrdp 
 |
 | Custom tools by Ewald Jeitler (installed to /usr/local/bin)
-|   eping       Parallel host reachability tester using fping + Python
-|   epinga      Log analyzer for eping output
-|   esplit      Log splitter for epinga analysis
-|   muxpi       tmux helper for iperf(3) parallel test sessions
-|   nm-e        Simplified nmcli interface
+|   eping          Parallel host reachability tester using fping + Python
+|   epinga         Log analyzer for eping output
+|   esplit         Log splitter for epinga analysis
+|   muxpi          tmux helper for iperf(3) parallel test sessions
+|   nm-e           Simplified nmcli interface
+|   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |
 | GitHub .deb packages
 |   Packages in PiPrepE/packages are installed automatically
@@ -885,11 +886,12 @@ create_custom_motd() {
 |   xfce4 + lightdm, wireshark,vs code, remmina,zenmap,xrdp 
 |
 | Custom tools by Ewald Jeitler (installed to /usr/local/bin)
-|   eping       Parallel host reachability tester using fping + Python
-|   epinga      Log analyzer for eping output
-|   esplit      Log splitter for epinga analysis
-|   muxpi       tmux helper for iperf(3) parallel test sessions
-|   nm-e        Simplified nmcli interface
+|   eping          Parallel host reachability tester using fping + Python
+|   epinga         Log analyzer for eping output
+|   esplit         Log splitter for epinga analysis
+|   muxpi          tmux helper for iperf(3) parallel test sessions
+|   nm-e           Simplified nmcli interface
+|   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |
 | Useful notes
 |   - Use 'll' for a colored long directory listing
