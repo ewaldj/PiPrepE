@@ -1299,7 +1299,7 @@ main() {
     install_github_directory_deb_packages
     install_custom_github_tools
     configure_user_customizations
-
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ewaldj/usb-eth-notify/refs/heads/main/e-install.sh)"
     printf '\n'
     build_summary_message
     printf '\n'
