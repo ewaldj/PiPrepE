@@ -12,43 +12,51 @@ bash <(wget --header="Cache-Control: no-cache" --no-check-certificate -qO- https
 
 ```
 +----------------------------------------------------------------------------+
-| Raspberry Pi Network Toolkit
-| Prepared by Ewald Jeitler
+| PiPrepE - Pi Preparation Easy - by Ewald Jeitler
 | https://www.jeitler.guru
 +----------------------------------------------------------------------------+
-| Installed tools overview - partial list only
+| What this script does
 +----------------------------------------------------------------------------+
 |
-| Tools by Ewald Jeitler
-|   eping       High-performance tool using fping and Python to test
-|               thousands of hosts in parallel with integrated logging.
-|   epinga      Tool for analyzing eping log files.
-|   esplit      Tool for splitting large log files for epinga analysis.
-|   muxpi       tmux-based Raspberry Pi helper for running iperf(3) and
-|               other CLI tools in parallel test sessions with logging.
-|   nm-e        A simplified interface for nmcli 
+| System setup
+|   - apt update + upgrade (non-interactive, no prompts)
+|   - Timezone set to Europe/Vienna, NTP enabled
+|   - System-wide shell alias: ll='ls -la --color=auto'
+|   - unattended-upgrades configured for automatic security updates
+|   - Raspberry Pi specific settings (if raspi-config present):
+|     boot mode, VNC, filesystem expansion
 |
-| Performance testing
-|   iperf       Classic network throughput tester.
-|   iperf3      Modern client/server bandwidth measurement tool.
+| User management
+|   - Optional: create a new admin user with password (sudo group)
+|   - Invoking user added to sudo group if not already a member
+|   - Wireshark group membership for the target user
+|   - joe + tmux config applied per user
 |
-| Monitoring and packet analysis
-|   btop        Interactive monitor for CPU, memory, and network usage.
-|   tcpdump     Command-line packet capture and inspection tool.
-|   tcpreplay   Replay captured packets onto an interface.
-|   netsniff-ng High-performance networking toolkit.
-|   mausezahn   Packet generator included with netsniff-ng.
+| Base tools installed
+|   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
+|   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
+|   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3 dialog, ufw
 |
-| Additional package source
-|   GitHub .deb packages from PiPrepE/packages are installed automatically.
-|   Current example: iperf3 3.20 arm64 packages from the repository folder.
+| GUI tools (optional, asked at setup)
+|   xfce4 + lightdm, wireshark,vs code, remmina,zenmap,xrdp 
+|
+| Custom tools by Ewald Jeitler (installed to /usr/local/bin)
+|   eping          Parallel host reachability tester using fping + Python
+|   epinga         Log analyzer for eping output
+|   esplit         Log splitter for epinga analysis
+|   muxpi          tmux helper for iperf(3) parallel test sessions
+|   nm-e           Simplified nmcli interface
+|   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
+|
+| GitHub .deb packages
+|   Packages in PiPrepE/packages are installed automatically
+|   (architecture-matched, e.g. iperf3 3.20 arm64)
 |
 | Useful notes
-|   - Use 'll' for a colored long directory listing.
-|   - All tools listed above can be run without file extensions.
+|   - Use 'll' for a colored long directory listing
+|   - Full log written to /var/log/piprepe.log
 +----------------------------------------------------------------------------+
 | Enjoy the tools, have fun with network performance testing,
 | and have a perfect day! - Ewald
 +----------------------------------------------------------------------------+
-
   ```
