@@ -29,7 +29,6 @@ readonly LOCAL_BIN_DIR="/usr/local/bin"
 readonly DEFAULT_TIMEZONE="Europe/Vienna"
 readonly AUTHOR_NAME="Ewald Jeitler"
 readonly AUTHOR_WEBSITE="https://www.jeitler.guru"
-readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly MOTD_FILE="/etc/motd"
 readonly MOTD_NETWORK_SCRIPT="/etc/update-motd.d/10-piprepe-network"
 readonly JOE_INCLUDE_PATH="/etc/joe/joerc"
@@ -80,6 +79,11 @@ readonly CUSTOM_GITHUB_TOOLS=(
     "muxpi.sh|https://raw.githubusercontent.com/ewaldj/muxpi/main/muxpi.sh"
     "nm-e.sh|https://raw.githubusercontent.com/ewaldj/nm-e/main/nm-e.sh"
 )
+readonly SYSTEM_BASHRC="/etc/bash.bashrc"
+readonly TERM_FIX_BLOCK='if [ "$TERM" = "vt220" ]; then
+    export TERM=xterm-256color
+fi'
+
 
 declare -a SKIPPED_ITEMS=()
 TARGET_USERNAME=""
@@ -792,16 +796,22 @@ configure_system_bash_aliases() {
         SKIPPED_ITEMS+=("System bashrc not found: ${SYSTEM_BASHRC}")
         return 0
     fi
-
     if grep -Fqx "$BASH_ALIAS_LINE" "$SYSTEM_BASHRC"; then
         return 0
     fi
-
     cat >>"$SYSTEM_BASHRC" <<EOF_ALIAS
-
 # Added by ${SCRIPT_NAME}
 ${BASH_ALIAS_LINE}
 EOF_ALIAS
+
+    # Add TERM fix if not already present
+    if ! grep -Fq 'export TERM=xterm-256color' "$SYSTEM_BASHRC"; then
+        cat >>"$SYSTEM_BASHRC" <<EOF_TERM
+
+# Terminal fix for serial console - added by ${SCRIPT_NAME}
+${TERM_FIX_BLOCK}
+EOF_TERM
+    fi
 }
 
 create_dynamic_network_motd() {
