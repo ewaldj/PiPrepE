@@ -71,6 +71,7 @@ readonly GUI_PACKAGES=(
     "zenmap"
     "xrdp"
     "blueman"
+    "firefox-esr"
 )
 readonly CUSTOM_GITHUB_TOOLS=(
     "eping.py|https://raw.githubusercontent.com/ewaldj/eping/main/eping.py"
