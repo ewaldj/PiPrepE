@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.40"
+readonly VERSION="0.41"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -771,34 +771,24 @@ write_file_as_user() {
     if [[ "$parent_directory" == "$home_directory/.config"* ]]; then
         config_directory="$home_directory/.config"
         if [[ -d "$config_directory" ]]; then
-            # Skip mount points (e.g. xrdp thinclient_drives) - chown on
-            # FUSE mounts owned by another user will always fail with EPERM
-            find "$config_directory" -mindepth 0 \
+            # Suppress errors on FUSE mount points (e.g. xrdp thinclient_drives)
+            # which are already owned by the correct user and cannot be chowned by root
+            find "$config_directory" \
                 \( -type f -o -type d \) \
-                -not -path "*/thinclient_drives" \
-                -not -path "*/thinclient_drives/*" \
-                | while IFS= read -r item; do
-                    mountpoint -q "$item" && continue
-                    chown "$username:$username" "$item" 2>/dev/null || true
-                done
+                -exec chown "$username:$username" {} \; 2>/dev/null || true
         fi
     fi
 
     if [[ -e "$destination_path" ]]; then
-        chown "$username:$username" "$destination_path"
+        chown "$username:$username" "$destination_path" 2>/dev/null || true
     fi
 
     if [[ -d "$parent_directory" ]]; then
-        # Skip mount points (e.g. xrdp thinclient_drives) - chown on
-        # FUSE mounts owned by another user will always fail with EPERM
-        find "$parent_directory" -mindepth 0 \
+        # Suppress errors on FUSE mount points (e.g. xrdp thinclient_drives)
+        # which are already owned by the correct user and cannot be chowned by root
+        find "$parent_directory" \
             \( -type f -o -type d \) \
-            -not -path "*/thinclient_drives" \
-            -not -path "*/thinclient_drives/*" \
-            | while IFS= read -r item; do
-                mountpoint -q "$item" && continue
-                chown "$username:$username" "$item" 2>/dev/null || true
-            done
+            -exec chown "$username:$username" {} \; 2>/dev/null || true
     fi
 }
 
