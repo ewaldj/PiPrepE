@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.30"
+readonly VERSION="0.31"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -909,6 +909,7 @@ create_custom_motd() {
 |   epinga         Log analyzer for eping output
 |   esplit         Log splitter for epinga analysis
 |   muxpi          tmux helper for iperf(3) parallel test sessions
+|   mau-tools      Multicast And Unicast Traffic Generator 
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |
