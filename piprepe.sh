@@ -83,6 +83,9 @@ readonly CUSTOM_GITHUB_TOOLS=(
     "esplit.py|https://raw.githubusercontent.com/ewaldj/eping/main/esplit.py"
     "muxpi.sh|https://raw.githubusercontent.com/ewaldj/muxpi/main/muxpi.sh"
     "nm-e.sh|https://raw.githubusercontent.com/ewaldj/nm-e/main/nm-e.sh"
+    "mau-recv.py|https://raw.githubusercontent.com/ewaldj/mau-tg/mau-recv.py"
+    "mau-send.py|https://raw.githubusercontent.com/ewaldj/mau-tg/mau-send.py"
+    "mau-time.py|https://raw.githubusercontent.com/ewaldj/mau-tg/mau-time.py"
 )
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly TERM_FIX_BLOCK='if [ "$TERM" = "vt220" ]; then
