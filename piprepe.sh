@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.34"
+readonly VERSION="0.35"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -532,6 +532,14 @@ setup_vscode_repository() {
     sed -i '/packages\.microsoft\.com\/repos\/code/d' /etc/apt/sources.list 2>/dev/null || true
     find /etc/apt/sources.list.d/ -name "*.list" ! -name "vscode.list" \
         -exec sed -i '/packages\.microsoft\.com\/repos\/code/d' {} \; 2>/dev/null || true
+
+    # Also remove conflicting .sources files (DEB822 format) for VS Code
+    find /etc/apt/sources.list.d/ -name "*.sources" \
+        -exec grep -l "packages\.microsoft\.com\/repos\/code" {} \; \
+        | xargs -r rm -f
+
+
+
 
     if [[ -f "$sources_path" ]]; then
         print_status "VS Code repository already configured, skipping."
