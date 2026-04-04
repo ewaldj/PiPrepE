@@ -76,6 +76,7 @@ readonly GUI_PACKAGES=(
     "xrdp"
     "blueman"
     "firefox-esr"
+    "network-manager-gnome"
 )
 readonly CUSTOM_GITHUB_TOOLS=(
     "eping.py|https://raw.githubusercontent.com/ewaldj/eping/main/eping.py"
