@@ -46,6 +46,7 @@ bash <(wget --header="Cache-Control: no-cache" --no-check-certificate -qO- https
 |   esplit         Log splitter for epinga analysis
 |   muxpi          tmux helper for iperf(3) parallel test sessions
 |   nm-e           Simplified nmcli interface
+|   mau-tools      Multicast And Unicast Traffic Generator 
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |
 | GitHub .deb packages
