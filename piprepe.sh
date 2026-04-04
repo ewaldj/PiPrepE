@@ -771,13 +771,16 @@ write_file_as_user() {
     if [[ "$parent_directory" == "$home_directory/.config"* ]]; then
         config_directory="$home_directory/.config"
         if [[ -d "$config_directory" ]]; then
-            # Use -xdev and explicitly exclude xrdp thinclient_drives
-            # to avoid permission errors on FUSE-mounted remote drives
-            find "$config_directory" -xdev \
-                -not -path "*/thinclient_drives/*" \
-                -not -path "*/thinclient_drives" \
+            # Skip mount points (e.g. xrdp thinclient_drives) - chown on
+            # FUSE mounts owned by another user will always fail with EPERM
+            find "$config_directory" -mindepth 0 \
                 \( -type f -o -type d \) \
-                -exec chown "$username:$username" {} \;
+                -not -path "*/thinclient_drives" \
+                -not -path "*/thinclient_drives/*" \
+                | while IFS= read -r item; do
+                    mountpoint -q "$item" && continue
+                    chown "$username:$username" "$item" 2>/dev/null || true
+                done
         fi
     fi
 
@@ -786,13 +789,16 @@ write_file_as_user() {
     fi
 
     if [[ -d "$parent_directory" ]]; then
-        # Use -xdev and explicitly exclude xrdp thinclient_drives
-        # to avoid permission errors on FUSE-mounted remote drives
-        find "$parent_directory" -xdev \
-            -not -path "*/thinclient_drives/*" \
-            -not -path "*/thinclient_drives" \
+        # Skip mount points (e.g. xrdp thinclient_drives) - chown on
+        # FUSE mounts owned by another user will always fail with EPERM
+        find "$parent_directory" -mindepth 0 \
             \( -type f -o -type d \) \
-            -exec chown "$username:$username" {} \;
+            -not -path "*/thinclient_drives" \
+            -not -path "*/thinclient_drives/*" \
+            | while IFS= read -r item; do
+                mountpoint -q "$item" && continue
+                chown "$username:$username" "$item" 2>/dev/null || true
+            done
     fi
 }
 
