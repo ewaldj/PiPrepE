@@ -62,6 +62,10 @@ readonly BASIC_PACKAGES=(
     "bc"
     "network-manager"
     "ufw"
+    "firmware-iwlwifi" 
+    "firmware-realtek" 
+    "firmware-b43-installer"
+    "firmware-linux"
 )
 
 readonly GUI_PACKAGES=(
