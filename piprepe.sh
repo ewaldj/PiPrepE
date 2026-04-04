@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.35"
+readonly VERSION="0.36"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -1321,6 +1321,10 @@ main() {
     print_status "Preparing setup..."
     collect_user_credentials
     enable_live_progress_view
+
+    # Clean up any conflicting VS Code repo files before first apt update
+    find /etc/apt/sources.list.d/ -name "vscode.*" -exec rm -f {} \;
+    rm -f /usr/share/keyrings/microsoft.gpg /etc/apt/keyrings/microsoft.gpg
 
     configure_needrestart
     configure_wireshark_debconf
