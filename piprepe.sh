@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.37"
+readonly VERSION="0.38"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -771,7 +771,11 @@ write_file_as_user() {
     if [[ "$parent_directory" == "$home_directory/.config"* ]]; then
         config_directory="$home_directory/.config"
         if [[ -d "$config_directory" ]]; then
-            chown -R "$username:$username" "$config_directory"
+            # Use -xdev to stay on the same filesystem and avoid
+            # descending into FUSE mounts (e.g. xrdp thinclient_drives)
+            find "$config_directory" -xdev \
+                \( -type f -o -type d \) \
+                -exec chown "$username:$username" {} \;
         fi
     fi
 
@@ -780,7 +784,10 @@ write_file_as_user() {
     fi
 
     if [[ -d "$parent_directory" ]]; then
-        chown -R "$username:$username" "$parent_directory"
+        # Use -xdev to avoid crossing into FUSE or other mounted filesystems
+        find "$parent_directory" -xdev \
+            \( -type f -o -type d \) \
+            -exec chown "$username:$username" {} \;
     fi
 }
 
