@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.29"
+readonly VERSION="0.30"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
