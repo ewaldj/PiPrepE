@@ -308,6 +308,7 @@ display_startup_overview() {
 |   epinga         Log analyzer for eping output
 |   esplit         Log splitter for epinga analysis
 |   muxpi          tmux helper for iperf(3) parallel test sessions
+|   mau-tools      Multicast And Unicast Traffic Generator 
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |
