@@ -549,7 +549,7 @@ setup_vscode_repository() {
 
     run_logged_command "Downloading Microsoft GPG key..." \
         bash -c 'curl -fsSL --proto "=https" --tlsv1.2 https://packages.microsoft.com/keys/microsoft.asc \
-            | gpg --dearmor -o "'"$keyring_path"'"'
+            | gpg --dearmor --yes -o "'"$keyring_path"'"'
 
     printf '%s\n' \
         "deb [arch=${arch} signed-by=${keyring_path}] https://packages.microsoft.com/repos/code stable main" \
