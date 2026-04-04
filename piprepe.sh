@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.31"
+readonly VERSION="0.33"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -510,6 +510,7 @@ resolve_package_name() {
 setup_vscode_repository() {
     local arch=""
     local keyring_path="/etc/apt/keyrings/microsoft.gpg"
+    local legacy_keyring_path="/usr/share/keyrings/microsoft.gpg"
     local sources_path="/etc/apt/sources.list.d/vscode.list"
 
     # Only amd64 and arm64 are supported by Microsoft
@@ -518,6 +519,19 @@ setup_vscode_repository() {
         SKIPPED_ITEMS+=("VS Code repository not added: unsupported architecture (${arch})")
         return 0
     fi
+
+    # Remove GPG key from legacy location if present to avoid
+    # "Conflicting values set for option Signed-By" errors on re-runs
+    if [[ -f "$legacy_keyring_path" ]]; then
+        print_status "Removing Microsoft GPG key from legacy location..."
+        rm -f "$legacy_keyring_path"
+    fi
+
+    # Remove any VS Code repo entries referencing a different key path
+    # to prevent apt from seeing two conflicting Signed-By values
+    sed -i '/packages\.microsoft\.com\/repos\/code/d' /etc/apt/sources.list 2>/dev/null || true
+    find /etc/apt/sources.list.d/ -name "*.list" ! -name "vscode.list" \
+        -exec sed -i '/packages\.microsoft\.com\/repos\/code/d' {} \; 2>/dev/null || true
 
     if [[ -f "$sources_path" ]]; then
         print_status "VS Code repository already configured, skipping."
@@ -533,10 +547,13 @@ setup_vscode_repository() {
         run_logged_command "Installing gnupg..." apt_noninteractive install -y gnupg
     fi
 
-    run_logged_command "Downloading Microsoft GPG key..."         bash -c 'curl -fsSL --proto "=https" --tlsv1.2 https://packages.microsoft.com/keys/microsoft.asc             | gpg --dearmor -o "'"$keyring_path"'"'
+    run_logged_command "Downloading Microsoft GPG key..." \
+        bash -c 'curl -fsSL --proto "=https" --tlsv1.2 https://packages.microsoft.com/keys/microsoft.asc \
+            | gpg --dearmor -o "'"$keyring_path"'"'
 
-    printf '%s
-'         "deb [arch=${arch} signed-by=${keyring_path}] https://packages.microsoft.com/repos/code stable main"         > "$sources_path"
+    printf '%s\n' \
+        "deb [arch=${arch} signed-by=${keyring_path}] https://packages.microsoft.com/repos/code stable main" \
+        > "$sources_path"
 
     run_logged_command "Updating package lists after adding VS Code repo..." apt_noninteractive update
 }
