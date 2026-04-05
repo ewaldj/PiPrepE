@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.42"
+readonly VERSION="0.43"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -84,7 +84,7 @@ readonly CUSTOM_GITHUB_TOOLS=(
     "esplit.py|https://raw.githubusercontent.com/ewaldj/eping/main/esplit.py"
     "muxpi.sh|https://raw.githubusercontent.com/ewaldj/muxpi/main/muxpi.sh"
     "nm-e.sh|https://raw.githubusercontent.com/ewaldj/nm-e/main/nm-e.sh"
-    "mau-recv.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-send.py"
+    "mau-recv.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-recv.py"
     "mau-send.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-send.py"
 )
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
