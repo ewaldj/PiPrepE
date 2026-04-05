@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.41"
+readonly VERSION="0.42"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -86,7 +86,6 @@ readonly CUSTOM_GITHUB_TOOLS=(
     "nm-e.sh|https://raw.githubusercontent.com/ewaldj/nm-e/main/nm-e.sh"
     "mau-recv.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-send.py"
     "mau-send.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-send.py"
-    "mau-time.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-time.py"
 )
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly TERM_FIX_BLOCK='if [ "$TERM" = "vt220" ]; then
