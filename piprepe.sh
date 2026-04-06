@@ -86,6 +86,8 @@ readonly CUSTOM_GITHUB_TOOLS=(
     "nm-e.sh|https://raw.githubusercontent.com/ewaldj/nm-e/main/nm-e.sh"
     "mau-recv.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-recv.py"
     "mau-send.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-send.py"
+    "dscp-top.py|https://raw.githubusercontent.com/ewaldj/dscp-top/main/dscp-top.py"
+    
 )
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly TERM_FIX_BLOCK='if [ "$TERM" = "vt220" ]; then
@@ -309,6 +311,7 @@ display_startup_overview() {
 |   esplit         Log splitter for epinga analysis
 |   muxpi          tmux helper for iperf(3) parallel test sessions
 |   mau-send/recv  Multicast And Unicast Traffic Generator 
+|   dscp-top       Real-time DSCP traffic analyzer
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |
@@ -943,6 +946,7 @@ create_custom_motd() {
 |   esplit         Log splitter for epinga analysis
 |   muxpi          tmux helper for iperf(3) parallel test sessions
 |   mau-send/recv  Multicast And Unicast Traffic Generator 
+|   dscp-top       Real-time DSCP traffic analyzer
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |
