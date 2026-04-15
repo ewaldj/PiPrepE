@@ -66,6 +66,7 @@ readonly BASIC_PACKAGES=(
     "firmware-realtek" 
     "firmware-b43-installer"
     "firmware-linux"
+    "snmp"
 )
 
 readonly GUI_PACKAGES=(
