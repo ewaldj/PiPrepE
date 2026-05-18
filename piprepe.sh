@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.43"
+readonly VERSION="0.44"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -238,6 +238,57 @@ apt_noninteractive() {
         -o Dpkg::Options::=--force-confdef \
         -o Dpkg::Options::=--force-confold \
         "$@"
+}
+
+fix_grub_if_broken() {
+    # On QEMU/KVM VMs, grub-pc may fail during non-interactive apt runs because
+    # debconf cannot prompt for the target disk. Detect and fix this automatically.
+    local grub_status=""
+
+    grub_status="$(dpkg -l grub-pc 2>/dev/null | awk '/grub-pc/{print $1}')"
+
+    # Only act if grub-pc is in a half-configured or error state
+    if [[ "$grub_status" != "iF" && "$grub_status" != "iU" && "$grub_status" != "rc" ]]; then
+        # Also check if dpkg --configure -a would complain about grub-pc
+        if ! dpkg --audit 2>/dev/null | grep -q grub-pc; then
+            return 0
+        fi
+    fi
+
+    print_status "Detected broken grub-pc state — attempting automatic repair..."
+
+    # Detect the primary boot disk (first non-loop, non-rom block device)
+    local boot_disk=""
+    boot_disk="$(lsblk -ndo NAME,TYPE 2>/dev/null \
+        | awk '$2=="disk"{print "/dev/"$1; exit}')"
+
+    if [[ -z "$boot_disk" ]]; then
+        SKIPPED_ITEMS+=("grub-pc repair skipped: could not detect boot disk")
+        return 0
+    fi
+
+    print_status "Configuring grub-pc for disk: ${boot_disk}"
+
+    # Pre-seed the grub-pc disk selection so dpkg does not prompt
+    if command_exists debconf-set-selections; then
+        printf 'grub-pc grub-pc/install_devices multiselect %s\n' "$boot_disk" \
+            | debconf-set-selections
+        printf 'grub-pc grub-pc/install_devices_empty boolean false\n' \
+            | debconf-set-selections
+    fi
+
+    # Complete any pending dpkg configuration
+    DEBIAN_FRONTEND=noninteractive dpkg --configure -a || true
+
+    # Regenerate grub config
+    if command_exists update-grub; then
+        update-grub 2>/dev/null || true
+    fi
+
+    # Fix any remaining broken dependencies
+    apt_noninteractive install --fix-broken -y || true
+
+    print_status "grub-pc repair completed."
 }
 
 validate_username() {
@@ -1343,7 +1394,7 @@ main() {
     configure_wireshark_debconf
 
     run_logged_command "Updating package lists..." apt_noninteractive update
-    run_logged_command "Upgrading installed packages..." apt_noninteractive upgrade -y
+    run_logged_command "Upgrading installed packages..." apt_noninteractive upgrade -y || fix_grub_if_broken
     run_logged_command "Refreshing package lists after upgrade..." apt_noninteractive update
 
     install_package_group "Installing base tools..." "${BASIC_PACKAGES[@]}"
