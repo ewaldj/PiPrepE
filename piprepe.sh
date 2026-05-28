@@ -67,6 +67,7 @@ readonly BASIC_PACKAGES=(
     "firmware-b43-installer"
     "firmware-linux"
     "snmp"
+    "yersinia"
 )
 
 readonly GUI_PACKAGES=(
