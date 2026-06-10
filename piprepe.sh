@@ -68,6 +68,7 @@ readonly BASIC_PACKAGES=(
     "firmware-linux"
     "snmp"
     "yersinia"
+    "ethtool"
 )
 
 readonly GUI_PACKAGES=(
