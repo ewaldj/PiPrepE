@@ -90,6 +90,7 @@ readonly CUSTOM_GITHUB_TOOLS=(
     "mau-recv.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-recv.py"
     "mau-send.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-send.py"
     "dscp-top.py|https://raw.githubusercontent.com/ewaldj/dscp-top/main/dscp-top.py"
+    "pmtu-diag.py|https://raw.githubusercontent.com/ewaldj/pmtu-diag/main/pmtu-diag.py"
     
 )
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
@@ -389,6 +390,7 @@ display_startup_overview() {
 |   dscp-top       Real-time DSCP traffic analyzer
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
+|   pmtu-diag      Measures Path MTU in both directions and flags PMTUD black holes
 |
 | GitHub .deb packages
 |   Packages in PiPrepE/packages are installed automatically
@@ -1024,6 +1026,7 @@ create_custom_motd() {
 |   dscp-top       Real-time DSCP traffic analyzer
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
+|   pmtu-diag      Measures Path MTU in both directions and flags PMTUD black holes
 |
 | Useful notes
 |   - Use 'll' for a colored long directory listing
