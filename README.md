@@ -48,6 +48,8 @@ bash <(wget --header="Cache-Control: no-cache" --no-check-certificate -qO- https
 |   nm-e           Simplified nmcli interface
 |   mau-tools      Multicast And Unicast Traffic Generator 
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
+|   pmtu-diag      Measures Path MTU in both directions and flags PMTUD black holes
+|   emtu-scan      Fast host reachability & path-MTU (PMTUD) scanner for IP ranges
 |
 | GitHub .deb packages
 |   Packages in PiPrepE/packages are installed automatically
