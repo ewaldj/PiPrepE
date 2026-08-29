@@ -392,6 +392,7 @@ display_startup_overview() {
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |   pmtu-diag      Measures Path MTU in both directions and flags PMTUD black holes
+|   emtu-scan      Fast host reachability & path-MTU (PMTUD) scanner for IP ranges
 |
 | GitHub .deb packages
 |   Packages in PiPrepE/packages are installed automatically
@@ -1028,6 +1029,7 @@ create_custom_motd() {
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |   pmtu-diag      Measures Path MTU in both directions and flags PMTUD black holes
+|   emtu-scan      Fast host reachability & path-MTU (PMTUD) scanner for IP ranges
 |
 | Useful notes
 |   - Use 'll' for a colored long directory listing
