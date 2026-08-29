@@ -91,7 +91,8 @@ readonly CUSTOM_GITHUB_TOOLS=(
     "mau-send.py|https://raw.githubusercontent.com/ewaldj/mau-tg/main/mau-send.py"
     "dscp-top.py|https://raw.githubusercontent.com/ewaldj/dscp-top/main/dscp-top.py"
     "pmtu-diag.py|https://raw.githubusercontent.com/ewaldj/pmtu-diag/main/pmtu-diag.py"
-    
+    "emtu-scan.py|https://raw.githubusercontent.com/ewaldj/emtu-scan/main/emtu-scan.py"
+
 )
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly TERM_FIX_BLOCK='if [ "$TERM" = "vt220" ]; then
