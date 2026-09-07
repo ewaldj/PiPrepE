@@ -69,6 +69,7 @@ readonly BASIC_PACKAGES=(
     "snmp"
     "yersinia"
     "ethtool"
+    "lldpd"
 )
 
 readonly GUI_PACKAGES=(
