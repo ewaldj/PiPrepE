@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.57"
+readonly VERSION="0.58"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -108,6 +108,8 @@ declare -a SKIPPED_ITEMS=()
 declare -a VNC_SESSIONS=()
 TARGET_USERNAME=""
 TARGET_PASSWORD=""
+INVOKING_VNC_PASSWORD=""
+REBOOT_REQUESTED="false"
 INVOKING_USERNAME=""
 DOWNLOAD_WORKSPACE=""
 ROOTFS_EXPANSION_REQUESTED="false"
@@ -376,6 +378,7 @@ display_startup_overview() {
 |
 | User management
 |   - Optional: create a new admin user with password (sudo group)
+|   - All questions are asked up front (user, GUI, VNC password, reboot)
 |   - Invoking user added to sudo group if not already a member
 |   - joe + tmux config applied per user
 |
@@ -517,6 +520,74 @@ prompt_for_gui_installation() {
     done
 }
 
+prompt_for_invoking_vnc_password() {
+    # VNC auth uses the first 8 characters only; empty input skips
+    local confirmation=""
+    local user_home=""
+
+    if [[ -z "$INVOKING_USERNAME" || "$INVOKING_USERNAME" == "root" ]]; then
+        return 0
+    fi
+
+    user_home="$(get_user_home_directory "$INVOKING_USERNAME" || true)"
+    if [[ -n "$user_home" && -f "${user_home}/.config/tigervnc/passwd" ]]; then
+        return 0
+    fi
+
+    while true; do
+        printf '\nEnter the VNC password for %s (max. 8 characters, empty = skip VNC for this user)\n' "$INVOKING_USERNAME"
+        printf 'VNC password: '
+        IFS= read -r -s INVOKING_VNC_PASSWORD
+        printf '\n'
+
+        if [[ -z "$INVOKING_VNC_PASSWORD" ]]; then
+            return 0
+        fi
+
+        if [[ ${#INVOKING_VNC_PASSWORD} -lt 6 || ${#INVOKING_VNC_PASSWORD} -gt 8 ]]; then
+            printf '%s\n' 'The VNC password must be 6 to 8 characters long.' >&2
+            INVOKING_VNC_PASSWORD=""
+            continue
+        fi
+
+        printf 'Confirm the VNC password: '
+        IFS= read -r -s confirmation
+        printf '\n'
+
+        if [[ "$INVOKING_VNC_PASSWORD" != "$confirmation" ]]; then
+            printf '%s\n' 'The passwords do not match. Please try again.' >&2
+            INVOKING_VNC_PASSWORD=""
+            continue
+        fi
+
+        return 0
+    done
+}
+
+prompt_for_reboot_choice() {
+    local response=""
+
+    while true; do
+        printf '\nReboot automatically when the setup is finished? [y/N]: '
+        IFS= read -r response
+        response="$(trim_whitespace "$response")"
+
+        case "${response,,}" in
+            y|yes|j|ja)
+                REBOOT_REQUESTED="true"
+                return 0
+                ;;
+            ""|n|no|nein)
+                REBOOT_REQUESTED="false"
+                return 0
+                ;;
+            *)
+                printf '%s\n' 'Please answer with y/yes or n/no.' >&2
+                ;;
+        esac
+    done
+}
+
 collect_user_credentials() {
     print_status "Collecting account information..."
     prompt_for_username
@@ -528,6 +599,12 @@ collect_user_credentials() {
     fi
 
     prompt_for_gui_installation
+
+    if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then
+        prompt_for_invoking_vnc_password
+    fi
+
+    prompt_for_reboot_choice
 }
 
 configure_needrestart() {
@@ -1197,6 +1274,12 @@ configure_vnc_sessions() {
             printf ':%s=%s\n' "$display" "$username" >>"$users_file"
         fi
 
+        if [[ "$username" == "$INVOKING_USERNAME" && -n "$INVOKING_VNC_PASSWORD" \
+            && ! -f "${user_home}/.config/tigervnc/passwd" ]]; then
+            create_vnc_password_for_user "$username" "$INVOKING_VNC_PASSWORD" \
+                || SKIPPED_ITEMS+=("VNC password creation failed for ${username}")
+        fi
+
         if [[ ! -f "${user_home}/.config/tigervnc/passwd" ]]; then
             SKIPPED_ITEMS+=("VNC not started for ${username}: run 'tigervncpasswd' as ${username}, then 'sudo systemctl enable --now tigervncserver@:${display}'")
         elif run_logged_command "Enabling VNC session :${display} for ${username}..." \
@@ -1207,6 +1290,9 @@ configure_vnc_sessions() {
         fi
         display=$((display + 1))
     done
+
+    unset INVOKING_VNC_PASSWORD
+    INVOKING_VNC_PASSWORD=""
 }
 
 configure_user_customizations() {
@@ -1462,29 +1548,13 @@ install_usb_eth_notify() {
     SKIPPED_ITEMS+=("usb-eth-notify installation failed")
 }
 
-prompt_for_reboot() {
-    local response=""
-
-    while true; do
-        printf '\nWould you like to reboot the system now? [y/N]: '
-        IFS= read -r response
-        response="$(trim_whitespace "$response")"
-
-        case "${response,,}" in
-            y|yes|j|ja)
-                printf '%s\n' 'Rebooting system now...'
-                reboot
-                return 0
-                ;;
-            ""|n|no|nein)
-                printf '%s\n' 'Reboot skipped. You can reboot later manually if needed.'
-                return 0
-                ;;
-            *)
-                printf '%s\n' 'Please answer with y/yes or n/no.' >&2
-                ;;
-        esac
-    done
+perform_reboot_if_requested() {
+    if [[ "$REBOOT_REQUESTED" == "true" ]]; then
+        printf '%s\n' 'Rebooting system now...'
+        reboot
+    else
+        printf '%s\n' 'Reboot skipped. You can reboot later manually if needed.'
+    fi
 }
 
 build_summary_message() {
@@ -1595,7 +1665,7 @@ main() {
     printf '\n'
     build_summary_message
     printf '\n'
-    prompt_for_reboot
+    perform_reboot_if_requested
 }
 
 main "$@"

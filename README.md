@@ -21,9 +21,10 @@ bash <(wget --header="Cache-Control: no-cache" --no-check-certificate -qO- https
 1. Overview screen and confirmation prompt `[y/N]`.
 2. Optional: new admin username and password (empty username = skip).
 3. Prompt: install GUI tools and desktop environment `[y/N]`.
-4. Unattended installation. Output is mirrored to `/var/log/piprepe.log`.
-5. Summary (user, GUI, timezone, log, sources, skipped items).
-6. Reboot prompt.
+4. If GUI is selected: VNC password for the invoking user (6-8 characters, empty = skip).
+5. Prompt: reboot automatically when finished `[y/N]`.
+6. Unattended installation without further prompts. Output is mirrored to `/var/log/piprepe.log`.
+7. Summary (user, GUI, timezone, log, sources, skipped items), then reboot if requested.
 
 Packages not available via apt are skipped and listed under "Skipped items" in the summary.
 
@@ -99,7 +100,7 @@ Each user gets an own XFCE desktop session (separate from the monitor and RDP se
 | Session start | `~/.config/tigervnc/xstartup`: private D-Bus (`dbus-launch --exit-with-session startxfce4`), so VNC works while the same user has an RDP or monitor session |
 | Password | `~/.config/tigervnc/passwd` (VNC auth, first 8 characters only) |
 | New user | VNC password = first 8 characters of the account password; service is enabled and started |
-| Invoking user | Password is not known to the script: run `tigervncpasswd`, then `sudo systemctl enable --now tigervncserver@:1` (listed under "Skipped items") |
+| Invoking user | VNC password is asked at the start of the run; service is enabled and started. Empty input skips VNC for this user (listed under "Skipped items"). An existing `passwd` is kept and not asked again |
 | Existing `config.pl` / `xstartup` | Not overwritten |
 
 Connect with a VNC client to `<ip>:<5900+display>`. The service unit warns against use in untrusted networks.
