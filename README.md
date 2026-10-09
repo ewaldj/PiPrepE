@@ -38,22 +38,26 @@ bash <(wget --header="Cache-Control: no-cache" --no-check-certificate -qO- https
 |   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3 dialog, ufw
 |
 | GUI tools (optional, asked at setup)
-|   xfce4 + lightdm, wireshark,vs code, remmina,zenmap,xrdp 
+|   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, firefox-esr, blueman
+|   wireshark-custom 4.6.9 (self-built, from PiPrepE/gui-packages)
 |
 | Custom tools by Ewald Jeitler (installed to /usr/local/bin)
 |   eping          Parallel host reachability tester using fping + Python
 |   epinga         Log analyzer for eping output
 |   esplit         Log splitter for epinga analysis
 |   muxpi          tmux helper for iperf(3) parallel test sessions
+|   mau-send/recv  Multicast And Unicast Traffic Generator 
+|   dscp-top       Real-time DSCP traffic analyzer
 |   nm-e           Simplified nmcli interface
-|   mau-tools      Multicast And Unicast Traffic Generator 
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
 |   pmtu-diag      Measures Path MTU in both directions and flags PMTUD black holes
 |   emtu-scan      Fast host reachability & path-MTU (PMTUD) scanner for IP ranges
 |
 | GitHub .deb packages
 |   Packages in PiPrepE/packages are installed automatically
-|   (architecture-matched, e.g. iperf3 3.20 arm64)
+|   (architecture-matched, e.g. iperf3 3.20, yersinia 0.8.2 + libnet9 arm64)
+|   Packages in PiPrepE/gui-packages are installed only if GUI tools
+|   are selected (e.g. wireshark-custom 4.6.9 arm64)
 |
 | Useful notes
 |   - Use 'll' for a colored long directory listing

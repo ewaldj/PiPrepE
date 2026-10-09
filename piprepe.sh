@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.46"
+readonly VERSION="0.48"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -69,7 +69,6 @@ readonly BASIC_PACKAGES=(
     "firmware-b43-installer"
     "firmware-linux"
     "snmp"
-    "yersinia"
     "ethtool"
     "lldpd"
 )
@@ -382,7 +381,8 @@ display_startup_overview() {
 |   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3 dialog, ufw
 |
 | GUI tools (optional, asked at setup)
-|   xfce4 + lightdm, wireshark,vs code, remmina,zenmap,xrdp 
+|   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, firefox-esr, blueman
+|   wireshark-custom 4.6.9 (self-built, from PiPrepE/gui-packages)
 |
 | Custom tools by Ewald Jeitler (installed to /usr/local/bin)
 |   eping          Parallel host reachability tester using fping + Python
@@ -398,7 +398,9 @@ display_startup_overview() {
 |
 | GitHub .deb packages
 |   Packages in PiPrepE/packages are installed automatically
-|   (architecture-matched, e.g. iperf3 3.20 arm64)
+|   (architecture-matched, e.g. iperf3 3.20, yersinia 0.8.2 + libnet9 arm64)
+|   Packages in PiPrepE/gui-packages are installed only if GUI tools
+|   are selected (e.g. wireshark-custom 4.6.9 arm64)
 |
 | Useful notes
 |   - Use 'll' for a colored long directory listing
@@ -1025,7 +1027,8 @@ create_custom_motd() {
 |   iperf, iperf3
 |
 | GUI tools (optional, asked at setup)
-|   xfce4 + lightdm, wireshark,vs code, remmina,zenmap,xrdp 
+|   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, firefox-esr, blueman
+|   wireshark-custom 4.6.9 (self-built, from PiPrepE/gui-packages)
 |
 | Custom tools by Ewald Jeitler (installed to /usr/local/bin)
 |   eping          Parallel host reachability tester using fping + Python
@@ -1388,6 +1391,9 @@ build_summary_message() {
     printf ' Live log file         : %s\n' "$LOG_FILE"
     printf ' GitHub tools          : %s\n' "$LOCAL_BIN_DIR"
     printf ' GitHub .deb source    : %s\n' "$GITHUB_PACKAGES_REPO_PAGE"
+    if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then
+        printf ' GitHub GUI .deb source: %s\n' "$GITHUB_GUI_PACKAGES_REPO_PAGE"
+    fi
     printf ' System alias          : %s\n' "$BASH_ALIAS_LINE"
     printf ' Desktop keyboard      : %s\n' "German (Austria)"
     printf '+----------------------------------------------------------------------------+\n'
