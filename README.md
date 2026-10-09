@@ -84,6 +84,7 @@ Installed only if GUI was selected at setup.
 | Applications | `code` (Microsoft repository; fallback `code-oss`), `remmina`, `zenmap`, `firefox-esr`, `blueman`, `network-manager-gnome` |
 | Remote access | `xrdp` |
 | Wireshark | `wireshark-custom` 4.6.9 from `gui-packages/` (see below) |
+| Default session | lightdm `user-session` set to `xfce-wayland` in `/etc/lightdm/lightdm.conf` (backup: `lightdm.conf.piprepe.bak`), `Session=` in `~/.dmrc` of invoking and new user; `autologin-session` is changed only if already set. VNC (`wayvnc`) mirrors this Wayland session. |
 | xrdp keyboard | Per user `~/.xsessionrc` (`setxkbmap` values from `/etc/default/keyboard`) and `~/.xsession` (`startxfce4`) |
 
 ## Custom tools

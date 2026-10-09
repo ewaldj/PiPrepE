@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.52"
+readonly VERSION="0.53"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -38,6 +38,9 @@ readonly GITHUB_GUI_PACKAGES_API_URL="https://api.github.com/repos/ewaldj/PiPrep
 readonly GITHUB_GUI_PACKAGES_REPO_PAGE="https://github.com/ewaldj/PiPrepE/tree/main/gui-packages"
 readonly TMUX_CONFIG_CONTENT=$'set-option -g history-limit 100000\nset-option -g mouse on\n'
 readonly JOE_CONFIG_CONTENT=$':include /etc/joe/joerc\n-nobackups\n--wordwrap\n'
+readonly LIGHTDM_CONF="/etc/lightdm/lightdm.conf"
+readonly WAYLAND_SESSIONS_DIR="/usr/share/wayland-sessions"
+readonly DESKTOP_SESSION_NAME="xfce-wayland"
 readonly BASH_ALIAS_LINE="alias ll='ls -la --color=auto'"
 readonly BASIC_PACKAGES=(
     "joe"
@@ -1051,6 +1054,66 @@ configure_xrdp_keyboard() {
     done
 }
 
+set_lightdm_option() {
+    # Args: <key> <value> <create_if_missing: true|false>
+    local key="$1"
+    local value="$2"
+    local create_if_missing="$3"
+
+    if grep -q "^${key}=" "$LIGHTDM_CONF"; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "$LIGHTDM_CONF"
+    elif [[ "$create_if_missing" == "true" ]]; then
+        if grep -q '^\[Seat:\*\]' "$LIGHTDM_CONF"; then
+            sed -i "/^\[Seat:\*\]/a ${key}=${value}" "$LIGHTDM_CONF"
+        else
+            printf '\n[Seat:*]\n%s=%s\n' "$key" "$value" >>"$LIGHTDM_CONF"
+        fi
+    fi
+}
+
+configure_default_desktop_session() {
+    # lightdm on Pi OS defaults to rpd-labwc. wayvnc only mirrors a Wayland session,
+    # so the default session is set to xfce-wayland.
+    local session="$DESKTOP_SESSION_NAME"
+    local username=""
+    local user_home=""
+    local dmrc_path=""
+
+    if [[ ! -f "${WAYLAND_SESSIONS_DIR}/${session}.desktop" ]]; then
+        SKIPPED_ITEMS+=("Default desktop session not set: ${session} session not installed")
+        return 0
+    fi
+
+    if [[ -f "$LIGHTDM_CONF" ]]; then
+        if [[ ! -f "${LIGHTDM_CONF}.piprepe.bak" ]]; then
+            cp -p "$LIGHTDM_CONF" "${LIGHTDM_CONF}.piprepe.bak"
+        fi
+        set_lightdm_option "user-session" "$session" "true"
+        # Do not enable autologin; only follow an already active setting
+        set_lightdm_option "autologin-session" "$session" "false"
+    else
+        SKIPPED_ITEMS+=("lightdm config not found: ${LIGHTDM_CONF}")
+    fi
+
+    # lightdm preselects the last used session stored in ~/.dmrc
+    for username in "$INVOKING_USERNAME" "$TARGET_USERNAME"; do
+        if [[ -z "$username" || "$username" == "root" ]] || ! id "$username" >/dev/null 2>&1; then
+            continue
+        fi
+        user_home="$(get_user_home_directory "$username")"
+        if [[ -z "$user_home" || ! -d "$user_home" ]]; then
+            continue
+        fi
+        dmrc_path="${user_home}/.dmrc"
+        if [[ -f "$dmrc_path" ]] && grep -q '^Session=' "$dmrc_path"; then
+            sed -i "s|^Session=.*|Session=${session}|" "$dmrc_path"
+        else
+            printf '[Desktop]\nSession=%s\n' "$session" >"$dmrc_path"
+        fi
+        chown "${username}:${username}" "$dmrc_path" 2>/dev/null || true
+    done
+}
+
 configure_user_customizations() {
     local username=""
 
@@ -1070,6 +1133,7 @@ configure_user_customizations() {
 
     if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then
         run_logged_command "Configuring xrdp keyboard and session..." configure_xrdp_keyboard
+        run_logged_command "Setting default desktop session (${DESKTOP_SESSION_NAME})..." configure_default_desktop_session
     fi
 
     run_logged_command "Configuring system-wide shell aliases..." configure_system_bash_aliases
