@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.56"
+readonly VERSION="0.57"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -83,6 +83,7 @@ readonly GUI_PACKAGES=(
     "firefox-esr"
     "network-manager-gnome"
     "qt6-wayland"
+    "dbus-x11"
     "tigervnc-standalone-server"
     "tigervnc-tools"
 )
@@ -1117,6 +1118,16 @@ configure_default_desktop_session() {
     done
 }
 
+ensure_vnc_config_dir() {
+    # TigerVNC 1.15 uses ~/.config/tigervnc (a legacy ~/.vnc is migrated there and
+    # the migration fails if the new directory is missing its parent or not owned by the user)
+    local username="$1"
+    local user_home="$2"
+
+    install -d -m 755 -o "$username" -g "$username" "${user_home}/.config"
+    install -d -m 700 -o "$username" -g "$username" "${user_home}/.config/tigervnc"
+}
+
 create_vnc_password_for_user() {
     # VNC auth uses the first 8 characters of the password only
     local username="$1"
@@ -1129,10 +1140,10 @@ create_vnc_password_for_user() {
         return 0
     fi
 
-    install -d -m 700 -o "$username" -g "$username" "${user_home}/.vnc"
-    printf '%s' "${password:0:8}" | tigervncpasswd -f >"${user_home}/.vnc/passwd"
-    chown "${username}:${username}" "${user_home}/.vnc/passwd"
-    chmod 600 "${user_home}/.vnc/passwd"
+    ensure_vnc_config_dir "$username" "$user_home"
+    printf '%s' "${password:0:8}" | tigervncpasswd -f >"${user_home}/.config/tigervnc/passwd"
+    chown "${username}:${username}" "${user_home}/.config/tigervnc/passwd"
+    chmod 600 "${user_home}/.config/tigervnc/passwd"
 }
 
 configure_vnc_sessions() {
@@ -1141,6 +1152,7 @@ configure_vnc_sessions() {
     local username=""
     local user_home=""
     local conf_path=""
+    local xstartup_path=""
     local users_file="/etc/tigervnc/vncserver.users"
     local -a handled_users=()
 
@@ -1163,18 +1175,29 @@ configure_vnc_sessions() {
             continue
         fi
 
-        install -d -m 700 -o "$username" -g "$username" "${user_home}/.vnc"
-        conf_path="${user_home}/.vnc/tigervnc.conf"
+        ensure_vnc_config_dir "$username" "$user_home"
+        conf_path="${user_home}/.config/tigervnc/config.pl"
         if [[ ! -f "$conf_path" ]]; then
             printf '%s\n' '$session = "xfce";' '$localhost = "no";' '1;' >"$conf_path"
             chown "${username}:${username}" "$conf_path"
+        fi
+
+        # Private D-Bus per VNC session: a second XFCE session of the same user
+        # (RDP, monitor) on the shared user bus would exit immediately
+        xstartup_path="${user_home}/.config/tigervnc/xstartup"
+        if [[ ! -f "$xstartup_path" ]]; then
+            printf '%s\n' '#!/bin/sh' \
+                'unset SESSION_MANAGER DBUS_SESSION_BUS_ADDRESS' \
+                'exec dbus-launch --exit-with-session startxfce4' >"$xstartup_path"
+            chown "${username}:${username}" "$xstartup_path"
+            chmod 755 "$xstartup_path"
         fi
 
         if ! grep -qxF ":${display}=${username}" "$users_file" 2>/dev/null; then
             printf ':%s=%s\n' "$display" "$username" >>"$users_file"
         fi
 
-        if [[ ! -f "${user_home}/.vnc/passwd" ]]; then
+        if [[ ! -f "${user_home}/.config/tigervnc/passwd" ]]; then
             SKIPPED_ITEMS+=("VNC not started for ${username}: run 'tigervncpasswd' as ${username}, then 'sudo systemctl enable --now tigervncserver@:${display}'")
         elif run_logged_command "Enabling VNC session :${display} for ${username}..." \
             systemctl enable --now "tigervncserver@:${display}.service"; then

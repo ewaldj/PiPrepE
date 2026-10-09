@@ -95,11 +95,12 @@ Each user gets an own XFCE desktop session (separate from the monitor and RDP se
 |---|---|
 | Display / port | Invoking user `:1` (TCP 5901), new user `:2` (TCP 5902); order as created, existing entries in `/etc/tigervnc/vncserver.users` are kept |
 | Mapping | `/etc/tigervnc/vncserver.users` (`:<display>=<user>`) |
-| User config | `~/.vnc/tigervnc.conf`: `$session = "xfce"`, `$localhost = "no"` (listens on all interfaces; security types `VncAuth,TLSVnc`) |
-| Password | `~/.vnc/passwd` (VNC auth, first 8 characters only) |
+| User config | `~/.config/tigervnc/config.pl`: `$session = "xfce"`, `$localhost = "no"` (listens on all interfaces; security types `VncAuth,TLSVnc`) |
+| Session start | `~/.config/tigervnc/xstartup`: private D-Bus (`dbus-launch --exit-with-session startxfce4`), so VNC works while the same user has an RDP or monitor session |
+| Password | `~/.config/tigervnc/passwd` (VNC auth, first 8 characters only) |
 | New user | VNC password = first 8 characters of the account password; service is enabled and started |
 | Invoking user | Password is not known to the script: run `tigervncpasswd`, then `sudo systemctl enable --now tigervncserver@:1` (listed under "Skipped items") |
-| Existing `~/.vnc/tigervnc.conf` | Not overwritten |
+| Existing `config.pl` / `xstartup` | Not overwritten |
 
 Connect with a VNC client to `<ip>:<5900+display>`. The service unit warns against use in untrusted networks.
 
