@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.55"
+readonly VERSION="0.56"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -83,6 +83,8 @@ readonly GUI_PACKAGES=(
     "firefox-esr"
     "network-manager-gnome"
     "qt6-wayland"
+    "tigervnc-standalone-server"
+    "tigervnc-tools"
 )
 readonly CUSTOM_GITHUB_TOOLS=(
     "eping.py|https://raw.githubusercontent.com/ewaldj/eping/main/eping.py"
@@ -102,6 +104,7 @@ readonly TERM_FIX_BLOCK='if [ "$TERM" = "vt220" ]; then
 fi'
 
 declare -a SKIPPED_ITEMS=()
+declare -a VNC_SESSIONS=()
 TARGET_USERNAME=""
 TARGET_PASSWORD=""
 INVOKING_USERNAME=""
@@ -382,7 +385,7 @@ display_startup_overview() {
 |   ethtool, snmp, lldpd, yersinia (Layer 2 protocol test tool, from PiPrepE/packages)
 |
 | GUI tools (optional, asked at setup)
-|   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, firefox-esr, blueman
+|   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, tigervnc, firefox-esr, blueman
 |   wireshark-custom 4.6.9 (self-built, from PiPrepE/gui-packages)
 |
 | Custom tools by Ewald Jeitler (installed to /usr/local/bin)
@@ -988,7 +991,7 @@ create_custom_motd() {
 |   ethtool, snmp, lldpd, yersinia (Layer 2 protocol test tool, from PiPrepE/packages)
 |
 | GUI tools (optional, asked at setup)
-|   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, firefox-esr, blueman
+|   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, tigervnc, firefox-esr, blueman
 |   wireshark-custom 4.6.9 (self-built, from PiPrepE/gui-packages)
 |
 | Custom tools by Ewald Jeitler (installed to /usr/local/bin)
@@ -1114,6 +1117,75 @@ configure_default_desktop_session() {
     done
 }
 
+create_vnc_password_for_user() {
+    # VNC auth uses the first 8 characters of the password only
+    local username="$1"
+    local password="$2"
+    local user_home=""
+
+    user_home="$(get_user_home_directory "$username")"
+    if [[ -z "$user_home" || ! -d "$user_home" ]] || ! command_exists tigervncpasswd; then
+        SKIPPED_ITEMS+=("VNC password not created for ${username}")
+        return 0
+    fi
+
+    install -d -m 700 -o "$username" -g "$username" "${user_home}/.vnc"
+    printf '%s' "${password:0:8}" | tigervncpasswd -f >"${user_home}/.vnc/passwd"
+    chown "${username}:${username}" "${user_home}/.vnc/passwd"
+    chmod 600 "${user_home}/.vnc/passwd"
+}
+
+configure_vnc_sessions() {
+    # One TigerVNC session per user: display :N -> TCP port 5900+N, XFCE desktop
+    local display=1
+    local username=""
+    local user_home=""
+    local conf_path=""
+    local users_file="/etc/tigervnc/vncserver.users"
+    local -a handled_users=()
+
+    if ! command_exists tigervncserver; then
+        SKIPPED_ITEMS+=("VNC sessions skipped: tigervncserver not installed")
+        return 0
+    fi
+
+    for username in "$INVOKING_USERNAME" "$TARGET_USERNAME"; do
+        if [[ -z "$username" || "$username" == "root" ]] || ! id "$username" >/dev/null 2>&1; then
+            continue
+        fi
+        if [[ " ${handled_users[*]:-} " == *" ${username} "* ]]; then
+            continue
+        fi
+        handled_users+=("$username")
+
+        user_home="$(get_user_home_directory "$username")"
+        if [[ -z "$user_home" || ! -d "$user_home" ]]; then
+            continue
+        fi
+
+        install -d -m 700 -o "$username" -g "$username" "${user_home}/.vnc"
+        conf_path="${user_home}/.vnc/tigervnc.conf"
+        if [[ ! -f "$conf_path" ]]; then
+            printf '%s\n' '$session = "xfce";' '$localhost = "no";' '1;' >"$conf_path"
+            chown "${username}:${username}" "$conf_path"
+        fi
+
+        if ! grep -qxF ":${display}=${username}" "$users_file" 2>/dev/null; then
+            printf ':%s=%s\n' "$display" "$username" >>"$users_file"
+        fi
+
+        if [[ ! -f "${user_home}/.vnc/passwd" ]]; then
+            SKIPPED_ITEMS+=("VNC not started for ${username}: run 'tigervncpasswd' as ${username}, then 'sudo systemctl enable --now tigervncserver@:${display}'")
+        elif run_logged_command "Enabling VNC session :${display} for ${username}..." \
+            systemctl enable --now "tigervncserver@:${display}.service"; then
+            VNC_SESSIONS+=("${username}=$((5900 + display))")
+        else
+            SKIPPED_ITEMS+=("VNC session failed for ${username} (see ${LOG_FILE})")
+        fi
+        display=$((display + 1))
+    done
+}
+
 configure_user_customizations() {
     local username=""
 
@@ -1133,6 +1205,7 @@ configure_user_customizations() {
 
     if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then
         run_logged_command "Configuring xrdp keyboard and session..." configure_xrdp_keyboard
+        run_logged_command "Configuring VNC sessions..." configure_vnc_sessions
         run_logged_command "Setting default desktop session (${DESKTOP_SESSION_NAME})..." configure_default_desktop_session
     fi
 
@@ -1153,6 +1226,11 @@ configure_user_accounts() {
         fi
 
         run_logged_command "Setting password for ${TARGET_USERNAME}..." set_user_password
+        if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then
+            if ! create_vnc_password_for_user "$TARGET_USERNAME" "$TARGET_PASSWORD"; then
+                SKIPPED_ITEMS+=("VNC password creation failed for ${TARGET_USERNAME}")
+            fi
+        fi
 
         if getent group sudo >/dev/null 2>&1; then
             run_logged_command "Adding ${TARGET_USERNAME} to sudo group..." /usr/sbin/usermod -aG sudo "$TARGET_USERNAME"
@@ -1413,6 +1491,9 @@ build_summary_message() {
     printf ' GUI tools installed   : %s\n' "$gui_summary"
     printf ' Timezone              : %s\n' "$DEFAULT_TIMEZONE"
     printf ' Live log file         : %s\n' "$LOG_FILE"
+    if ((${#VNC_SESSIONS[@]} > 0)); then
+        printf ' VNC (user=port)      : %s\n' "${VNC_SESSIONS[*]}"
+    fi
     printf ' GitHub tools          : %s\n' "$LOCAL_BIN_DIR"
     printf ' GitHub .deb source    : %s\n' "$GITHUB_PACKAGES_REPO_PAGE"
     if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then

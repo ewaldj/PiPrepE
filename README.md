@@ -82,10 +82,26 @@ Installed only if GUI was selected at setup.
 |---|---|
 | Desktop | `xfce4`, `xfce4-terminal`, `lightdm`, `lightdm-gtk-greeter` (only if `xfce4-session` is not installed) |
 | Applications | `code` (Microsoft repository; fallback `code-oss`), `remmina`, `zenmap`, `firefox-esr`, `blueman`, `network-manager-gnome`, `qt6-wayland` |
-| Remote access | `xrdp` |
+| Remote access | `xrdp` (RDP, port 3389), `tigervnc-standalone-server` (VNC, see below) |
 | Wireshark | `wireshark-custom` 4.6.9 from `gui-packages/` (see below) |
-| Default session | lightdm `user-session` set to `xfce` (X11) in `/etc/lightdm/lightdm.conf` (backup: `lightdm.conf.piprepe.bak`), `Session=` in `~/.dmrc` of invoking and new user; `autologin-session` is changed only if already set. Remote access: RDP (`xrdp`); VNC is not enabled. |
+| Default session | lightdm `user-session` set to `xfce` (X11) in `/etc/lightdm/lightdm.conf` (backup: `lightdm.conf.piprepe.bak`), `Session=` in `~/.dmrc` of invoking and new user; `autologin-session` is changed only if already set. |
 | xrdp keyboard | Per user `~/.xsessionrc` (`setxkbmap` values from `/etc/default/keyboard`) and `~/.xsession` (`startxfce4`) |
+
+### VNC sessions (TigerVNC)
+
+Each user gets an own XFCE desktop session (separate from the monitor and RDP sessions), started by `tigervncserver@:<display>.service`.
+
+| Item | Value |
+|---|---|
+| Display / port | Invoking user `:1` (TCP 5901), new user `:2` (TCP 5902); order as created, existing entries in `/etc/tigervnc/vncserver.users` are kept |
+| Mapping | `/etc/tigervnc/vncserver.users` (`:<display>=<user>`) |
+| User config | `~/.vnc/tigervnc.conf`: `$session = "xfce"`, `$localhost = "no"` (listens on all interfaces; security types `VncAuth,TLSVnc`) |
+| Password | `~/.vnc/passwd` (VNC auth, first 8 characters only) |
+| New user | VNC password = first 8 characters of the account password; service is enabled and started |
+| Invoking user | Password is not known to the script: run `tigervncpasswd`, then `sudo systemctl enable --now tigervncserver@:1` (listed under "Skipped items") |
+| Existing `~/.vnc/tigervnc.conf` | Not overwritten |
+
+Connect with a VNC client to `<ip>:<5900+display>`. The service unit warns against use in untrusted networks.
 
 ## Custom tools
 
