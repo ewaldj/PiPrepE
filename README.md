@@ -80,8 +80,8 @@ Installed only if GUI was selected at setup.
 
 | Component | Detail |
 |---|---|
-| Desktop | `xfce4`, `xfce4-terminal`, `lightdm`, `lightdm-gtk-greeter` (only if no desktop environment is detected) |
-| Applications | `code` (Microsoft repository; fallback `code-oss`), `remmina`, `zenmap`, `firefox-esr`, `blueman`, `network-manager-gnome` |
+| Desktop | `xfce4`, `xfce4-terminal`, `lightdm`, `lightdm-gtk-greeter` (only if `xfce4-session` is not installed) |
+| Applications | `code` (Microsoft repository; fallback `code-oss`), `remmina`, `zenmap`, `firefox-esr`, `blueman`, `network-manager-gnome`, `qt6-wayland` |
 | Remote access | `xrdp` |
 | Wireshark | `wireshark-custom` 4.6.9 from `gui-packages/` (see below) |
 | Default session | lightdm `user-session` set to `xfce-wayland` in `/etc/lightdm/lightdm.conf` (backup: `lightdm.conf.piprepe.bak`), `Session=` in `~/.dmrc` of invoking and new user; `autologin-session` is changed only if already set. VNC (`wayvnc`) mirrors this Wayland session. |

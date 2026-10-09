@@ -16,12 +16,12 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.53"
+readonly VERSION="0.54"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
 export APT_LISTCHANGES_FRONTEND=none
-readonly SCRIPT_NAME="$(basename "$0")"
+readonly SCRIPT_NAME="piprepe.sh"
 readonly LOG_FILE="/var/log/${SCRIPT_NAME%.*}.log"
 readonly APT_CONFIG_DIR="/etc/apt/apt.conf.d"
 readonly NEEDRESTART_CONFIG_DIR="/etc/needrestart/conf.d"
@@ -82,6 +82,7 @@ readonly GUI_PACKAGES=(
     "blueman"
     "firefox-esr"
     "network-manager-gnome"
+    "qt6-wayland"
 )
 readonly CUSTOM_GITHUB_TOOLS=(
     "eping.py|https://raw.githubusercontent.com/ewaldj/eping/main/eping.py"
@@ -669,28 +670,27 @@ install_package_group() {
     fi
 }
 
-is_desktop_environment_installed() {
-    # Check for a running or configured display manager as indicator for an existing desktop
-    if command_exists dpkg && dpkg -l 'task-desktop' 'xfce4' 'gnome-shell' 'lxde' 'mate-desktop-environment' 'xfce4-session' 'lxde-core' 2>/dev/null \
-        | grep -q '^ii'; then
-        return 0
-    fi
+unit_file_exists() {
+    # Capture output first: "systemctl | grep -q" can end with SIGPIPE (rc 141) under pipefail
+    local pattern="$1"
+    local units=""
 
-    if command_exists systemctl && systemctl list-unit-files 2>/dev/null \
-        | grep -qE '^(lightdm|gdm|sddm|xdm|nodm)\.service'; then
-        return 0
-    fi
+    command_exists systemctl || return 1
+    units="$(systemctl list-unit-files --no-legend 2>/dev/null || true)"
+    grep -qE "$pattern" <<<"$units"
+}
 
-    return 1
+is_xfce_installed() {
+    [[ "$(dpkg-query -W -f='${db:Status-Abbrev}' xfce4-session 2>/dev/null || true)" == ii* ]]
 }
 
 install_desktop_if_missing() {
-    if is_desktop_environment_installed; then
-        print_status "Desktop environment detected, skipping xfce4 installation."
+    if is_xfce_installed; then
+        print_status "xfce4 already installed, skipping xfce4 installation."
         return 0
     fi
 
-    print_status "No desktop environment detected. Installing xfce4 + lightdm..."
+    print_status "xfce4 not installed. Installing xfce4 + lightdm..."
     run_logged_command "Installing xfce4 desktop..." \
         apt_noninteractive install -y xfce4 xfce4-terminal lightdm lightdm-gtk-greeter
 }
@@ -1214,11 +1214,11 @@ Dpkg::Options {
 EOF_UNATTENDED
 
     if command_exists systemctl; then
-        if systemctl list-unit-files 2>/dev/null | grep -q '^apt-daily\.timer'; then
+        if unit_file_exists '^apt-daily\.timer'; then
             run_logged_command "Enabling APT automatic update timers..." systemctl enable --now apt-daily.timer apt-daily-upgrade.timer
         fi
 
-        if systemctl list-unit-files 2>/dev/null | grep -q '^unattended-upgrades\.service'; then
+        if unit_file_exists '^unattended-upgrades\.service'; then
             run_logged_command "Enabling unattended-upgrades service..." systemctl enable --now unattended-upgrades.service
         fi
     fi
@@ -1252,7 +1252,7 @@ enable_ntp() {
         fi
     fi
 
-    if command_exists systemctl && systemctl list-unit-files 2>/dev/null | grep -q '^systemd-timesyncd\.service'; then
+    if unit_file_exists '^systemd-timesyncd\.service'; then
         systemctl enable --now systemd-timesyncd.service
         return 0
     fi
@@ -1374,6 +1374,7 @@ prompt_for_reboot() {
             y|yes|j|ja)
                 printf '%s\n' 'Rebooting system now...'
                 reboot
+                return 0
                 ;;
             ""|n|no|nein)
                 printf '%s\n' 'Reboot skipped. You can reboot later manually if needed.'
