@@ -69,7 +69,7 @@ Timers `apt-daily.timer`, `apt-daily-upgrade.timer` and `unattended-upgrades.ser
 |---|---|
 | Editor / terminal | `joe`, `tmux`, `screen`, `dialog`, `btop`, `bc` |
 | Connectivity | `iputils-ping`, `traceroute`, `telnet`, `inetutils-ftp`, `curl`, `net-tools`, `ethtool`, `snmp`, `lldpd` |
-| Scanning / capture | `nmap`, `fping`, `tcpdump`, `tcpreplay`, `netsniff-ng` (incl. `mausezahn`) |
+| Scanning / capture | `nmap`, `fping`, `tcpdump`, `tcpreplay`, `netsniff-ng` (incl. `mausezahn`), `python3-scapy` (required by `pmtu-diag`) |
 | Performance | `iperf`, `iperf3` |
 | Network / firewall | `iptables`, `ufw`, `network-manager` |
 | Layer 2 testing | `yersinia` (`.deb` from `packages/`, requires `libnet9`) |

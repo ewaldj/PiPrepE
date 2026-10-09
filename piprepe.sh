@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.59"
+readonly VERSION="0.60"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -72,6 +72,7 @@ readonly BASIC_PACKAGES=(
     "snmp"
     "ethtool"
     "lldpd"
+    "python3-scapy"
 )
 
 readonly GUI_PACKAGES=(
@@ -386,7 +387,8 @@ display_startup_overview() {
 |   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
 |   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
 |   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3, dialog, ufw,
-|   ethtool, snmp, lldpd, yersinia (Layer 2 protocol test tool, from PiPrepE/packages)
+|   ethtool, snmp, lldpd, python3-scapy,
+|   yersinia (Layer 2 protocol test tool, from PiPrepE/packages)
 |
 | GUI tools (optional, asked at setup)
 |   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, tigervnc, firefox-esr, blueman
@@ -1101,7 +1103,8 @@ create_custom_motd() {
 |   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
 |   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
 |   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3, dialog, ufw,
-|   ethtool, snmp, lldpd, yersinia (Layer 2 protocol test tool, from PiPrepE/packages)
+|   ethtool, snmp, lldpd, python3-scapy,
+|   yersinia (Layer 2 protocol test tool, from PiPrepE/packages)
 |
 | GUI tools (optional, asked at setup)
 |   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, tigervnc, firefox-esr, blueman
