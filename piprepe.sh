@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.45"
+readonly VERSION="0.46"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -34,6 +34,8 @@ readonly MOTD_NETWORK_SCRIPT="/etc/update-motd.d/10-piprepe-network"
 readonly JOE_INCLUDE_PATH="/etc/joe/joerc"
 readonly GITHUB_PACKAGES_API_URL="https://api.github.com/repos/ewaldj/PiPrepE/contents/packages?ref=main"
 readonly GITHUB_PACKAGES_REPO_PAGE="https://github.com/ewaldj/PiPrepE/tree/main/packages"
+readonly GITHUB_GUI_PACKAGES_API_URL="https://api.github.com/repos/ewaldj/PiPrepE/contents/gui-packages?ref=main"
+readonly GITHUB_GUI_PACKAGES_REPO_PAGE="https://github.com/ewaldj/PiPrepE/tree/main/gui-packages"
 readonly TMUX_CONFIG_CONTENT=$'set-option -g history-limit 100000\nset-option -g mouse on\n'
 readonly JOE_CONFIG_CONTENT=$':include /etc/joe/joerc\n-nobackups\n--wordwrap\n'
 readonly BASH_ALIAS_LINE="alias ll='ls -la --color=auto'"
@@ -74,7 +76,6 @@ readonly BASIC_PACKAGES=(
 
 readonly GUI_PACKAGES=(
     "code"
-    "wireshark"
     "remmina"
     "zenmap"
     "xrdp"
@@ -706,12 +707,14 @@ ensure_python3_available() {
 
 fetch_github_packages_metadata() {
     local metadata_file="$1"
+    local api_url="$2"
+    local label="$3"
 
-    run_logged_command "Fetching GitHub package metadata from PiPrepE/packages..." \
+    run_logged_command "Fetching GitHub package metadata from PiPrepE/${label}..." \
         curl -fsSL --proto '=https' --tlsv1.2 \
         -H 'Accept: application/vnd.github+json' \
         -o "$metadata_file" \
-        "$GITHUB_PACKAGES_API_URL"
+        "$api_url"
 }
 
 list_github_deb_packages() {
@@ -736,6 +739,10 @@ PY
 }
 
 install_github_directory_deb_packages() {
+    # Args: <api_url> <repo_page_url> <folder_label> (e.g. packages, gui-packages)
+    local api_url="$1"
+    local repo_page="$2"
+    local label="$3"
     local metadata_file=""
     local packages_directory=""
     local current_architecture=""
@@ -749,12 +756,12 @@ install_github_directory_deb_packages() {
     prepare_download_workspace
     ensure_python3_available
 
-    metadata_file="${DOWNLOAD_WORKSPACE}/github-packages.json"
-    packages_directory="${DOWNLOAD_WORKSPACE}/github-deb-packages"
+    metadata_file="${DOWNLOAD_WORKSPACE}/github-${label}.json"
+    packages_directory="${DOWNLOAD_WORKSPACE}/github-deb-${label}"
     current_architecture="$(dpkg --print-architecture)"
 
     mkdir -p "$packages_directory"
-    fetch_github_packages_metadata "$metadata_file"
+    fetch_github_packages_metadata "$metadata_file" "$api_url" "$label"
 
     while IFS='|' read -r deb_name deb_url; do
         if [[ -z "$deb_name" || -z "$deb_url" ]]; then
@@ -786,7 +793,7 @@ install_github_directory_deb_packages() {
     done < <(list_github_deb_packages "$metadata_file")
 
     if [[ "$found_any_deb" != "true" ]]; then
-        SKIPPED_ITEMS+=("No .deb packages found in GitHub folder: ${GITHUB_PACKAGES_REPO_PAGE}")
+        SKIPPED_ITEMS+=("No .deb packages found in GitHub folder: ${repo_page}")
         return 0
     fi
 
@@ -795,7 +802,7 @@ install_github_directory_deb_packages() {
         return 0
     fi
 
-    run_logged_command "Installing GitHub .deb packages from PiPrepE/packages..." \
+    run_logged_command "Installing GitHub .deb packages from PiPrepE/${label}..." \
         apt_noninteractive install -y "${installable_deb_files[@]}"
 }
 
@@ -1437,6 +1444,7 @@ main() {
         setup_vscode_repository
         install_desktop_if_missing
         install_package_group "Installing GUI tools..." "${GUI_PACKAGES[@]}"
+        install_github_directory_deb_packages "$GITHUB_GUI_PACKAGES_API_URL" "$GITHUB_GUI_PACKAGES_REPO_PAGE" "gui-packages"
         fix_grub_if_broken
     else
         print_status "Skipping GUI tools and desktop installation as requested."
@@ -1446,7 +1454,7 @@ main() {
     configure_auto_updates
     configure_system_time
     configure_raspberry_pi_settings
-    install_github_directory_deb_packages
+    install_github_directory_deb_packages "$GITHUB_PACKAGES_API_URL" "$GITHUB_PACKAGES_REPO_PAGE" "packages"
     install_custom_github_tools
     configure_user_customizations
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ewaldj/usb-eth-notify/refs/heads/main/e-install.sh)"
