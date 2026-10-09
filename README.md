@@ -59,7 +59,6 @@ Timers `apt-daily.timer`, `apt-daily-upgrade.timer` and `unattended-upgrades.ser
 
 - Optional: new user in group `sudo`.
 - Invoking user is added to `sudo` if not a member.
-- Target user and invoking user are added to group `wireshark` if the group exists (`usermod -aG`). If the group does not exist, the step is listed as skipped.
 - `joe` config per user: `:include /etc/joe/joerc`, `-nobackups`, `--wordwrap`.
 - `tmux` config per user: `history-limit 100000`, `mouse on`.
 

@@ -1,22 +1,22 @@
 #!/bin/bash
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # PiPrepE.sh by ewald@jeitler.cc 2026 https://www.jeitler.guru
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-# codename: PiPrepE (Pi Preparation Easy) 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# codename: PiPrepE (Pi Preparation Easy)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # When I wrote this code, only God and I knew how it worked.
 # Now only God and the AI know it.
 # And since the AI helped write it… good luck to all of us.
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 set -euo pipefail
 
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.48"
+readonly VERSION="0.51"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -39,8 +39,6 @@ readonly GITHUB_GUI_PACKAGES_REPO_PAGE="https://github.com/ewaldj/PiPrepE/tree/m
 readonly TMUX_CONFIG_CONTENT=$'set-option -g history-limit 100000\nset-option -g mouse on\n'
 readonly JOE_CONFIG_CONTENT=$':include /etc/joe/joerc\n-nobackups\n--wordwrap\n'
 readonly BASH_ALIAS_LINE="alias ll='ls -la --color=auto'"
-readonly DESKTOP_KEYBOARD_LAYOUT="at"
-readonly DESKTOP_KEYBOARD_MODEL="pc105"
 readonly BASIC_PACKAGES=(
     "joe"
     "dialog"
@@ -58,14 +56,14 @@ readonly BASIC_PACKAGES=(
     "tmux"
     "screen"
     "iperf"
-    "iperf3" 
+    "iperf3"
     "netsniff-ng"
     "tcpreplay"
     "bc"
     "network-manager"
     "ufw"
-    "firmware-iwlwifi" 
-    "firmware-realtek" 
+    "firmware-iwlwifi"
+    "firmware-realtek"
     "firmware-b43-installer"
     "firmware-linux"
     "snmp"
@@ -93,19 +91,16 @@ readonly CUSTOM_GITHUB_TOOLS=(
     "dscp-top.py|https://raw.githubusercontent.com/ewaldj/dscp-top/main/dscp-top.py"
     "pmtu-diag.py|https://raw.githubusercontent.com/ewaldj/pmtu-diag/main/pmtu-diag.py"
     "emtu-scan.py|https://raw.githubusercontent.com/ewaldj/emtu-scan/main/emtu-scan.py"
-
 )
 readonly SYSTEM_BASHRC="/etc/bash.bashrc"
 readonly TERM_FIX_BLOCK='if [ "$TERM" = "vt220" ]; then
     export TERM=xterm-256color
 fi'
 
-
 declare -a SKIPPED_ITEMS=()
 TARGET_USERNAME=""
 TARGET_PASSWORD=""
 INVOKING_USERNAME=""
-WIRESHARK_TARGET_USERNAME=""
 DOWNLOAD_WORKSPACE=""
 ROOTFS_EXPANSION_REQUESTED="false"
 LIVE_PROGRESS_MODE="false"
@@ -115,8 +110,7 @@ GUI_INSTALL_REQUESTED="false"
 if [[ "${EUID}" -ne 0 ]]; then
     ensure_interactive_terminal() {
         if [[ ! -t 0 || ! -t 1 || ! -t 2 ]]; then
-            printf '%s
-' "This script requires an interactive terminal." >&2
+            printf '%s\n' "This script requires an interactive terminal." >&2
             exit 1
         fi
     }
@@ -124,13 +118,11 @@ if [[ "${EUID}" -ne 0 ]]; then
     ensure_interactive_terminal
 
     if ! command -v sudo >/dev/null 2>&1; then
-        printf '%s
-' "This script must be run as root or with sudo, but sudo is not installed." >&2
+        printf '%s\n' "This script must be run as root or with sudo, but sudo is not installed." >&2
         exit 1
     fi
 
-    printf '%s
-' "Root privileges are required. Please enter your sudo password to continue."
+    printf '%s\n' "Root privileges are required. Please enter your sudo password to continue."
     sudo -v
     exec sudo --preserve-env=TERM bash "$0" "$@"
 fi
@@ -224,7 +216,6 @@ enable_live_progress_view() {
     printf ' Automated setup started\n'
     printf ' Invoking user: %s\n' "$INVOKING_USERNAME"
     printf ' New admin account: %s\n' "$account_display"
-    printf ' Wireshark group target: %s\n' "${WIRESHARK_TARGET_USERNAME:-none}"
     printf ' Live log file: %s\n' "$LOG_FILE"
     printf '============================================================\n'
 }
@@ -233,8 +224,14 @@ run_logged_command() {
     local description="$1"
     shift
 
+    local rc=0
+
     printf '\n[%s] START: %s\n' "$(date '+%F %T')" "$description"
-    "$@"
+    "$@" || rc=$?
+    if ((rc != 0)); then
+        printf '[%s] FAILED (rc=%d): %s\n' "$(date '+%F %T')" "$rc" "$description" >&2
+        return "$rc"
+    fi
     printf '[%s] DONE:  %s\n' "$(date '+%F %T')" "$description"
 }
 
@@ -372,13 +369,13 @@ display_startup_overview() {
 | User management
 |   - Optional: create a new admin user with password (sudo group)
 |   - Invoking user added to sudo group if not already a member
-|   - Wireshark group membership for the target user
 |   - joe + tmux config applied per user
 |
 | Base tools installed
 |   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
 |   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
-|   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3 dialog, ufw
+|   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3, dialog, ufw,
+|   ethtool, snmp, lldpd
 |
 | GUI tools (optional, asked at setup)
 |   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, firefox-esr, blueman
@@ -389,7 +386,7 @@ display_startup_overview() {
 |   epinga         Log analyzer for eping output
 |   esplit         Log splitter for epinga analysis
 |   muxpi          tmux helper for iperf(3) parallel test sessions
-|   mau-send/recv  Multicast And Unicast Traffic Generator 
+|   mau-send/recv  Multicast And Unicast Traffic Generator
 |   dscp-top       Real-time DSCP traffic analyzer
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
@@ -440,7 +437,7 @@ prompt_for_username() {
 
     while true; do
         printf '\nEnter the username for the new administrative account\n'
-        printf '%s\n' 'Leave it empty and press Enter to skip user creation and only use the current user for the Wireshark group.'
+        printf '%s\n' 'Leave it empty and press Enter to skip user creation and only use the current user.'
         printf 'Username: '
         IFS= read -r entered_username
         entered_username="$(trim_whitespace "$entered_username")"
@@ -448,7 +445,6 @@ prompt_for_username() {
         if [[ -z "$entered_username" ]]; then
             USER_CREATION_REQUESTED="false"
             TARGET_USERNAME=""
-            WIRESHARK_TARGET_USERNAME="$INVOKING_USERNAME"
             return 0
         fi
 
@@ -459,7 +455,6 @@ prompt_for_username() {
 
         USER_CREATION_REQUESTED="true"
         TARGET_USERNAME="$entered_username"
-        WIRESHARK_TARGET_USERNAME="$entered_username"
         return 0
     done
 }
@@ -514,7 +509,6 @@ prompt_for_gui_installation() {
     done
 }
 
-
 collect_user_credentials() {
     print_status "Collecting account information..."
     prompt_for_username
@@ -522,7 +516,7 @@ collect_user_credentials() {
     if [[ "$USER_CREATION_REQUESTED" == "true" ]]; then
         prompt_for_password
     else
-        print_status "No new administrative user requested. The current invoking user will be used for the Wireshark group if possible."
+        print_status "No new administrative user requested. The current invoking user will be used."
     fi
 
     prompt_for_gui_installation
@@ -534,12 +528,6 @@ configure_needrestart() {
 # Automatically restart services after package upgrades to avoid interactive prompts.
 $nrconf{restart} = 'a';
 EOF_NEEDRESTART
-    fi
-}
-
-configure_wireshark_debconf() {
-    if command_exists debconf-set-selections; then
-        printf '%s\n' 'wireshark-common wireshark-common/install-setuid boolean true' | debconf-set-selections
     fi
 }
 
@@ -624,9 +612,6 @@ setup_vscode_repository() {
         -exec grep -l "packages\.microsoft\.com\/repos\/code" {} \; \
         | xargs -r rm -f
 
-
-
-
     if [[ -f "$sources_path" ]]; then
         print_status "VS Code repository already configured, skipping."
         return 0
@@ -670,7 +655,14 @@ install_package_group() {
     done
 
     if ((${#installable_packages[@]} > 0)); then
-        run_logged_command "$description" apt_noninteractive install -y "${installable_packages[@]}"
+        if ! run_logged_command "$description" apt_noninteractive install -y "${installable_packages[@]}"; then
+            # Group install failed: retry one by one so a single bad package does not block the rest
+            for resolved_package in "${installable_packages[@]}"; do
+                if ! run_logged_command "Retrying ${resolved_package}..." apt_noninteractive install -y "$resolved_package"; then
+                    SKIPPED_ITEMS+=("Package install failed: ${resolved_package}")
+                fi
+            done
+        fi
     fi
 }
 
@@ -699,7 +691,6 @@ install_desktop_if_missing() {
     run_logged_command "Installing xfce4 desktop..." \
         apt_noninteractive install -y xfce4 xfce4-terminal lightdm lightdm-gtk-greeter
 }
-
 
 ensure_python3_available() {
     if ! command_exists python3; then
@@ -756,14 +747,20 @@ install_github_directory_deb_packages() {
     local found_any_deb="false"
 
     prepare_download_workspace
-    ensure_python3_available
+    if ! ensure_python3_available; then
+        SKIPPED_ITEMS+=("GitHub .deb folder skipped (python3 unavailable): ${label}")
+        return 0
+    fi
 
     metadata_file="${DOWNLOAD_WORKSPACE}/github-${label}.json"
     packages_directory="${DOWNLOAD_WORKSPACE}/github-deb-${label}"
     current_architecture="$(dpkg --print-architecture)"
 
     mkdir -p "$packages_directory"
-    fetch_github_packages_metadata "$metadata_file" "$api_url" "$label"
+    if ! fetch_github_packages_metadata "$metadata_file" "$api_url" "$label"; then
+        SKIPPED_ITEMS+=("GitHub metadata fetch failed (API limit or network): ${label}")
+        return 0
+    fi
 
     while IFS='|' read -r deb_name deb_url; do
         if [[ -z "$deb_name" || -z "$deb_url" ]]; then
@@ -773,8 +770,11 @@ install_github_directory_deb_packages() {
         found_any_deb="true"
         downloaded_file="${packages_directory}/${deb_name}"
 
-        run_logged_command "Downloading package ${deb_name} from GitHub..." \
-            curl -fsSL --proto '=https' --tlsv1.2 -o "$downloaded_file" "$deb_url"
+        if ! run_logged_command "Downloading package ${deb_name} from GitHub..." \
+            curl -fsSL --proto '=https' --tlsv1.2 -o "$downloaded_file" "$deb_url"; then
+            SKIPPED_ITEMS+=("GitHub .deb download failed: ${deb_name}")
+            continue
+        fi
 
         if [[ ! -s "$downloaded_file" ]]; then
             SKIPPED_ITEMS+=("Empty GitHub .deb download: ${deb_name}")
@@ -804,32 +804,14 @@ install_github_directory_deb_packages() {
         return 0
     fi
 
-    run_logged_command "Installing GitHub .deb packages from PiPrepE/${label}..." \
-        apt_noninteractive install -y "${installable_deb_files[@]}"
+    if ! run_logged_command "Installing GitHub .deb packages from PiPrepE/${label}..." \
+        apt_noninteractive install -y "${installable_deb_files[@]}"; then
+        SKIPPED_ITEMS+=("GitHub .deb install failed: ${label} (see ${LOG_FILE})")
+    fi
 }
 
 set_user_password() {
     printf '%s:%s\n' "$TARGET_USERNAME" "$TARGET_PASSWORD" | chpasswd
-}
-
-add_user_to_wireshark_group() {
-    local username="$1"
-
-    if [[ -z "$username" ]]; then
-        SKIPPED_ITEMS+=("No user available for Wireshark group membership")
-        return 0
-    fi
-
-    if ! id "$username" >/dev/null 2>&1; then
-        SKIPPED_ITEMS+=("User not found for Wireshark group membership: ${username}")
-        return 0
-    fi
-
-    if getent group wireshark >/dev/null 2>&1; then
-        run_logged_command "Adding ${username} to wireshark group..." /usr/sbin/usermod -aG wireshark "$username"
-    else
-        SKIPPED_ITEMS+=("Group missing: wireshark")
-    fi
 }
 
 get_user_home_directory() {
@@ -909,22 +891,6 @@ configure_tmux_for_user() {
     write_file_as_user "$username" "${user_home}/.tmux.conf" "$TMUX_CONFIG_CONTENT"
 }
 
-configure_desktop_keyboard_for_user() {
-    local username="$1"
-    local user_home=""
-    local labwc_environment_path=""
-
-    user_home="$(get_user_home_directory "$username")"
-    if [[ -z "$user_home" ]]; then
-        SKIPPED_ITEMS+=("Could not determine home directory for desktop keyboard configuration: ${username}")
-        return 0
-    fi
-
-    labwc_environment_path="${user_home}/.config/labwc/environment"
-    write_file_as_user "$username" "$labwc_environment_path" \
-$'XKB_DEFAULT_MODEL='"${DESKTOP_KEYBOARD_MODEL}"$'\nXKB_DEFAULT_LAYOUT='"${DESKTOP_KEYBOARD_LAYOUT}"$'\nXKB_DEFAULT_VARIANT=\nXKB_DEFAULT_OPTIONS=\n'
-}
-
 configure_system_bash_aliases() {
     if [[ ! -f "$SYSTEM_BASHRC" ]]; then
         SKIPPED_ITEMS+=("System bashrc not found: ${SYSTEM_BASHRC}")
@@ -969,12 +935,9 @@ while IFS= read -r line; do
 done < <(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | awk '{print $1}')
 
 if ((${#interfaces[@]} > 0)); then
-    printf '+----------------------------------------------------------------------------+
-'
-    printf '| Network Interfaces                                                         |
-'
-    printf '+----------------------------------------------------------------------------+
-'
+    printf '+----------------------------------------------------------------------------+\n'
+    printf '| Network Interfaces                                                         |\n'
+    printf '+----------------------------------------------------------------------------+\n'
     for iface in "${interfaces[@]}"; do
         addrs=()
         while IFS= read -r addr; do
@@ -984,19 +947,15 @@ if ((${#interfaces[@]} > 0)); then
             [[ -n "$addr" ]] && addrs+=("$addr")
         done < <(ip -o -6 addr show "$iface" 2>/dev/null | grep -v 'fe80' | awk '{print $4}')
         if ((${#addrs[@]} > 0)); then
-            printf '  %-12s %s
-' "$iface" "${addrs[0]}"
+            printf '  %-12s %s\n' "$iface" "${addrs[0]}"
             for addr in "${addrs[@]:1}"; do
-                printf '  %-12s %s
-' "" "$addr"
+                printf '  %-12s %s\n' "" "$addr"
             done
         else
-            printf '  %-12s (no address)
-' "$iface"
+            printf '  %-12s (no address)\n' "$iface"
         fi
     done
-    printf '+----------------------------------------------------------------------------+
-'
+    printf '+----------------------------------------------------------------------------+\n'
 fi
 EOF_NETWORK_MOTD
 
@@ -1007,8 +966,7 @@ EOF_NETWORK_MOTD
     if [[ -f /etc/pam.d/sshd ]]; then
         if ! grep -q "pam_motd.so.*motd_dir" /etc/pam.d/sshd 2>/dev/null; then
             if ! grep -q "pam_motd" /etc/pam.d/sshd 2>/dev/null; then
-                printf '%s
-' "session optional pam_motd.so motd=/run/motd.dynamic" >> /etc/pam.d/sshd
+                printf '%s\n' "session optional pam_motd.so motd=/run/motd.dynamic" >> /etc/pam.d/sshd
             fi
         fi
     fi
@@ -1023,8 +981,8 @@ create_custom_motd() {
 | Base tools installed
 |   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
 |   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
-|   inetutils (ping, traceroute, telnet, ftp), iperf, dialog, ufw,
-|   iperf, iperf3
+|   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3, dialog, ufw,
+|   ethtool, snmp, lldpd
 |
 | GUI tools (optional, asked at setup)
 |   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, firefox-esr, blueman
@@ -1035,7 +993,7 @@ create_custom_motd() {
 |   epinga         Log analyzer for eping output
 |   esplit         Log splitter for epinga analysis
 |   muxpi          tmux helper for iperf(3) parallel test sessions
-|   mau-send/recv  Multicast And Unicast Traffic Generator 
+|   mau-send/recv  Multicast And Unicast Traffic Generator
 |   dscp-top       Real-time DSCP traffic analyzer
 |   nm-e           Simplified nmcli interface
 |   usb-eth-notify Warning when USB‑Ethernet operates in USB 2.0 mode
@@ -1078,8 +1036,8 @@ configure_xrdp_keyboard() {
 
     local u="" user_home=""
     local users_to_configure=()
-    [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root" ]] &&         users_to_configure+=("$INVOKING_USERNAME")
-    [[ "$USER_CREATION_REQUESTED" == "true" && -n "$TARGET_USERNAME" ]] &&         users_to_configure+=("$TARGET_USERNAME")
+    [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root" ]] && users_to_configure+=("$INVOKING_USERNAME")
+    [[ "$USER_CREATION_REQUESTED" == "true" && -n "$TARGET_USERNAME" ]] && users_to_configure+=("$TARGET_USERNAME")
 
     for u in "${users_to_configure[@]}"; do
         if id "$u" >/dev/null 2>&1; then
@@ -1152,13 +1110,6 @@ configure_user_accounts() {
                 fi
             fi
         fi
-    fi
-
-    add_user_to_wireshark_group "$WIRESHARK_TARGET_USERNAME"
-
-    # Always also add the invoking user if different from WIRESHARK_TARGET_USERNAME
-    if [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root"        && "$INVOKING_USERNAME" != "$WIRESHARK_TARGET_USERNAME" ]]; then
-        add_user_to_wireshark_group "$INVOKING_USERNAME"
     fi
 
     unset TARGET_PASSWORD
@@ -1300,7 +1251,7 @@ install_remote_executable() {
     temporary_file="${DOWNLOAD_WORKSPACE}/${tool_name}"
 
     run_logged_command "Downloading ${tool_name} from GitHub..." \
-        curl -fsSL --proto '=https' --tlsv1.2 -o "$temporary_file" "$source_url"
+        curl -fsSL --proto '=https' --tlsv1.2 -o "$temporary_file" "$source_url" || return 1
 
     if [[ ! -s "$temporary_file" ]]; then
         printf '%s\n' "Downloaded file is empty: $tool_name from $source_url" >>"$LOG_FILE"
@@ -1308,9 +1259,9 @@ install_remote_executable() {
     fi
 
     run_logged_command "Installing ${tool_name} to ${destination_directory}..." \
-        install -m 0755 "$temporary_file" "${destination_directory}/${tool_name}"
+        install -m 0755 "$temporary_file" "${destination_directory}/${tool_name}" || return 1
 
-    create_command_symlink "$tool_name"
+    create_command_symlink "$tool_name" || return 1
 }
 
 install_custom_github_tools() {
@@ -1319,39 +1270,53 @@ install_custom_github_tools() {
     local source_url=""
 
     ensure_directory_exists_or_create "$LOCAL_BIN_DIR"
-    ensure_python3_available
+    if ! ensure_python3_available; then
+        SKIPPED_ITEMS+=("Python 3 install failed; Python-based custom tools may not run")
+    fi
 
     for tool_definition in "${CUSTOM_GITHUB_TOOLS[@]}"; do
         tool_name="${tool_definition%%|*}"
         source_url="${tool_definition#*|}"
-        install_remote_executable "$tool_name" "$source_url" "$LOCAL_BIN_DIR"
+        if ! install_remote_executable "$tool_name" "$source_url" "$LOCAL_BIN_DIR"; then
+            SKIPPED_ITEMS+=("Custom tool failed: ${tool_name}")
+        fi
     done
 }
 
+install_usb_eth_notify() {
+    local installer_file=""
+
+    prepare_download_workspace
+    installer_file="${DOWNLOAD_WORKSPACE}/usb-eth-notify-install.sh"
+
+    if run_logged_command "Downloading usb-eth-notify installer..." \
+        curl -fsSL --proto '=https' --tlsv1.2 -o "$installer_file" \
+        "https://raw.githubusercontent.com/ewaldj/usb-eth-notify/refs/heads/main/e-install.sh" \
+        && run_logged_command "Running usb-eth-notify installer..." /bin/bash "$installer_file"; then
+        return 0
+    fi
+    SKIPPED_ITEMS+=("usb-eth-notify installation failed")
+}
 
 prompt_for_reboot() {
     local response=""
 
     while true; do
-        printf '
-Would you like to reboot the system now? [y/N]: '
+        printf '\nWould you like to reboot the system now? [y/N]: '
         IFS= read -r response
         response="$(trim_whitespace "$response")"
 
         case "${response,,}" in
             y|yes|j|ja)
-                printf '%s
-' 'Rebooting system now...'
+                printf '%s\n' 'Rebooting system now...'
                 reboot
                 ;;
             ""|n|no|nein)
-                printf '%s
-' 'Reboot skipped. You can reboot later manually if needed.'
+                printf '%s\n' 'Reboot skipped. You can reboot later manually if needed.'
                 return 0
                 ;;
             *)
-                printf '%s
-' 'Please answer with y/yes or n/no.' >&2
+                printf '%s\n' 'Please answer with y/yes or n/no.' >&2
                 ;;
         esac
     done
@@ -1382,11 +1347,6 @@ build_summary_message() {
     printf ' Invoking user         : %s\n' "$INVOKING_USERNAME"
     printf ' New admin user        : %s\n' "$new_user_summary"
     printf ' GUI tools installed   : %s\n' "$gui_summary"
-    if [[ -n "$INVOKING_USERNAME" && "$INVOKING_USERNAME" != "root"        && "$INVOKING_USERNAME" != "$WIRESHARK_TARGET_USERNAME" ]]; then
-        printf ' Wireshark group users : %s, %s\n' "${WIRESHARK_TARGET_USERNAME:-none}" "$INVOKING_USERNAME"
-    else
-        printf ' Wireshark group user  : %s\n' "${WIRESHARK_TARGET_USERNAME:-none}"
-    fi
     printf ' Timezone              : %s\n' "$DEFAULT_TIMEZONE"
     printf ' Live log file         : %s\n' "$LOG_FILE"
     printf ' GitHub tools          : %s\n' "$LOCAL_BIN_DIR"
@@ -1395,7 +1355,6 @@ build_summary_message() {
         printf ' GitHub GUI .deb source: %s\n' "$GITHUB_GUI_PACKAGES_REPO_PAGE"
     fi
     printf ' System alias          : %s\n' "$BASH_ALIAS_LINE"
-    printf ' Desktop keyboard      : %s\n' "German (Austria)"
     printf '+----------------------------------------------------------------------------+\n'
 
     if ((${#SKIPPED_ITEMS[@]} > 0)); then
@@ -1429,12 +1388,13 @@ main() {
     collect_user_credentials
     enable_live_progress_view
 
-    # Clean up any conflicting VS Code repo files before first apt update
-    find /etc/apt/sources.list.d/ -name "vscode.*" -exec rm -f {} \;
-    rm -f /usr/share/keyrings/microsoft.gpg /etc/apt/keyrings/microsoft.gpg
+    # Clean up any conflicting VS Code repo files before first apt update (GUI only)
+    if [[ "$GUI_INSTALL_REQUESTED" == "true" ]]; then
+        find /etc/apt/sources.list.d/ -name "vscode.*" -exec rm -f {} \;
+        rm -f /usr/share/keyrings/microsoft.gpg /etc/apt/keyrings/microsoft.gpg
+    fi
 
     configure_needrestart
-    configure_wireshark_debconf
 
     prepare_grub_for_vm
 
@@ -1463,7 +1423,7 @@ main() {
     install_github_directory_deb_packages "$GITHUB_PACKAGES_API_URL" "$GITHUB_PACKAGES_REPO_PAGE" "packages"
     install_custom_github_tools
     configure_user_customizations
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ewaldj/usb-eth-notify/refs/heads/main/e-install.sh)"
+    install_usb_eth_notify
     printf '\n'
     build_summary_message
     printf '\n'
