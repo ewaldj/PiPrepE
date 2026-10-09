@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.58"
+readonly VERSION="0.59"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -1040,6 +1040,41 @@ if ((${#interfaces[@]} > 0)); then
         fi
     done
     printf '+----------------------------------------------------------------------------+\n'
+fi
+
+# Remote access URIs (only for services that are active)
+ipv4_list=()
+for iface in "${interfaces[@]:-}"; do
+    [[ -z "$iface" ]] && continue
+    while IFS= read -r addr; do
+        [[ -n "$addr" ]] && ipv4_list+=("$addr")
+    done < <(ip -o -4 addr show dev "$iface" scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1)
+done
+
+if ((${#ipv4_list[@]} > 0)); then
+    access_lines=()
+    if systemctl is-active --quiet xrdp 2>/dev/null; then
+        for addr in "${ipv4_list[@]}"; do
+            access_lines+=("$(printf '  %-5s %s' 'RDP' "rdp://${addr}:3389")")
+        done
+    fi
+    if [[ -r /etc/tigervnc/vncserver.users ]]; then
+        while IFS='=' read -r disp vuser; do
+            [[ "$disp" =~ ^:([0-9]+)$ ]] || continue
+            num="${BASH_REMATCH[1]}"
+            systemctl is-active --quiet "tigervncserver@:${num}.service" 2>/dev/null || continue
+            for addr in "${ipv4_list[@]}"; do
+                access_lines+=("$(printf '  %-5s %-28s (%s)' 'VNC' "vnc://${addr}:$((5900 + num))" "$vuser")")
+            done
+        done < <(grep -E '^:[0-9]+=' /etc/tigervnc/vncserver.users 2>/dev/null)
+    fi
+    if ((${#access_lines[@]} > 0)); then
+        printf '+----------------------------------------------------------------------------+\n'
+        printf '| Remote Access                                                              |\n'
+        printf '+----------------------------------------------------------------------------+\n'
+        printf '%s\n' "${access_lines[@]}"
+        printf '+----------------------------------------------------------------------------+\n'
+    fi
 fi
 EOF_NETWORK_MOTD
 

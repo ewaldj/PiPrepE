@@ -36,7 +36,7 @@ Packages not available via apt are skipped and listed under "Skipped items" in t
 | GRUB | `grub-pc` target disk pre-seeded before apt runs, repaired after apt runs if left half-configured |
 | Time | Timezone `Europe/Vienna`, NTP enabled |
 | Shell | System-wide alias `ll='ls -la --color=auto'` in `/etc/bash.bashrc`, `TERM=vt220` mapped to `xterm-256color` |
-| MOTD | Static MOTD and dynamic network MOTD (`/etc/update-motd.d/10-piprepe-network`) |
+| MOTD | Static MOTD and dynamic network MOTD (`/etc/update-motd.d/10-piprepe-network`): interface addresses and, for active services, remote access URIs per IPv4 address (`rdp://<ip>:3389`, `vnc://<ip>:<5900+display>` with user) |
 | Auto updates | `unattended-upgrades` installed, see below |
 | Raspberry Pi | If `raspi-config` exists: boot mode without autologin, root filesystem expansion (reboot required) |
 
