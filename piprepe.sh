@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# PiPrepE.sh by ewald@jeitler.cc 2026 https://www.jeitler.guru
+# PiPrepE.sh by ewald@jeitler.cc 2026 https://www.jeitler.cc
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # codename: PiPrepE (Pi Preparation Easy)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.51"
+readonly VERSION="0.52"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -28,7 +28,7 @@ readonly NEEDRESTART_CONFIG_DIR="/etc/needrestart/conf.d"
 readonly LOCAL_BIN_DIR="/usr/local/bin"
 readonly DEFAULT_TIMEZONE="Europe/Vienna"
 readonly AUTHOR_NAME="Ewald Jeitler"
-readonly AUTHOR_WEBSITE="https://www.jeitler.guru"
+readonly AUTHOR_WEBSITE="https://www.jeitler.cc"
 readonly MOTD_FILE="/etc/motd"
 readonly MOTD_NETWORK_SCRIPT="/etc/update-motd.d/10-piprepe-network"
 readonly JOE_INCLUDE_PATH="/etc/joe/joerc"
@@ -352,8 +352,8 @@ display_startup_overview() {
     cat <<EOF_OVERVIEW
 
 +----------------------------------------------------------------------------+
-| PiPrepE - Pi Preparation Easy - by Ewald Jeitler
-| https://www.jeitler.guru
+| PiPrepE - Pi Preparation Easy - by Ewald Jeitler - Version ${VERSION}
+| https://www.jeitler.cc
 +----------------------------------------------------------------------------+
 | What this script does
 +----------------------------------------------------------------------------+
@@ -375,7 +375,7 @@ display_startup_overview() {
 |   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
 |   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
 |   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3, dialog, ufw,
-|   ethtool, snmp, lldpd
+|   ethtool, snmp, lldpd, yersinia (Layer 2 protocol test tool, from PiPrepE/packages)
 |
 | GUI tools (optional, asked at setup)
 |   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, firefox-esr, blueman
@@ -976,13 +976,13 @@ create_custom_motd() {
     cat >"$MOTD_FILE" <<'EOF_MOTD'
 +----------------------------------------------------------------------------+
 | PiPrepE - Pi Preparation Easy by Ewald Jeitler
-| https://www.jeitler.guru
+| https://www.jeitler.cc
 +----------------------------------------------------------------------------+
 | Base tools installed
 |   joe, tmux, screen, curl, net-tools, nmap, fping, iptables,
 |   tcpdump, tcpreplay, netsniff-ng (incl. mausezahn), btop,
 |   inetutils (ping, traceroute, telnet, ftp), iperf, iperf3, dialog, ufw,
-|   ethtool, snmp, lldpd
+|   ethtool, snmp, lldpd, yersinia (Layer 2 protocol test tool, from PiPrepE/packages)
 |
 | GUI tools (optional, asked at setup)
 |   xfce4 + lightdm, vs code, remmina, zenmap, xrdp, firefox-esr, blueman

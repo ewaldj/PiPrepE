@@ -71,6 +71,7 @@ Timers `apt-daily.timer`, `apt-daily-upgrade.timer` and `unattended-upgrades.ser
 | Scanning / capture | `nmap`, `fping`, `tcpdump`, `tcpreplay`, `netsniff-ng` (incl. `mausezahn`) |
 | Performance | `iperf`, `iperf3` |
 | Network / firewall | `iptables`, `ufw`, `network-manager` |
+| Layer 2 testing | `yersinia` (`.deb` from `packages/`, requires `libnet9`) |
 | Firmware | `firmware-iwlwifi`, `firmware-realtek`, `firmware-b43-installer`, `firmware-linux` |
 
 ## GUI tools (optional)

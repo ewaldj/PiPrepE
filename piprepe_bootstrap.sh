@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# PiPrepE Bootstrap by ewald@jeitler.cc 2026 https://www.jeitler.guru
+# PiPrepE Bootstrap by ewald@jeitler.cc 2026 https://www.jeitler.cc
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Universal bootstrapper for PiPrepE.
 # Works on Debian (as root or normal user) and Raspberry Pi OS (sudo user).
@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-readonly VERSION="0.12"
+readonly VERSION="0.13"
 
 readonly BOOTSTRAP_URL="https://raw.githubusercontent.com/ewaldj/PiPrepE/refs/heads/main/piprepe_bootstrap.sh"
 readonly PIPREPE_URL="https://raw.githubusercontent.com/ewaldj/PiPrepE/refs/heads/main/piprepe.sh"
