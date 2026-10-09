@@ -37,7 +37,7 @@ Packages not available via apt are skipped and listed under "Skipped items" in t
 | Shell | System-wide alias `ll='ls -la --color=auto'` in `/etc/bash.bashrc`, `TERM=vt220` mapped to `xterm-256color` |
 | MOTD | Static MOTD and dynamic network MOTD (`/etc/update-motd.d/10-piprepe-network`) |
 | Auto updates | `unattended-upgrades` installed, see below |
-| Raspberry Pi | If `raspi-config` exists: boot mode without autologin, VNC enabled, root filesystem expansion (reboot required) |
+| Raspberry Pi | If `raspi-config` exists: boot mode without autologin, root filesystem expansion (reboot required) |
 
 ### Automatic updates
 
@@ -84,7 +84,7 @@ Installed only if GUI was selected at setup.
 | Applications | `code` (Microsoft repository; fallback `code-oss`), `remmina`, `zenmap`, `firefox-esr`, `blueman`, `network-manager-gnome`, `qt6-wayland` |
 | Remote access | `xrdp` |
 | Wireshark | `wireshark-custom` 4.6.9 from `gui-packages/` (see below) |
-| Default session | lightdm `user-session` set to `xfce-wayland` in `/etc/lightdm/lightdm.conf` (backup: `lightdm.conf.piprepe.bak`), `Session=` in `~/.dmrc` of invoking and new user; `autologin-session` is changed only if already set. VNC (`wayvnc`) mirrors this Wayland session. |
+| Default session | lightdm `user-session` set to `xfce` (X11) in `/etc/lightdm/lightdm.conf` (backup: `lightdm.conf.piprepe.bak`), `Session=` in `~/.dmrc` of invoking and new user; `autologin-session` is changed only if already set. Remote access: RDP (`xrdp`); VNC is not enabled. |
 | xrdp keyboard | Per user `~/.xsessionrc` (`setxkbmap` values from `/etc/default/keyboard`) and `~/.xsession` (`startxfce4`) |
 
 ## Custom tools

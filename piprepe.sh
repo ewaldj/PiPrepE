@@ -16,7 +16,7 @@ set -euo pipefail
 # Ensure sbin directories are in PATH (may be missing when called via bash <(wget ...))
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-readonly VERSION="0.54"
+readonly VERSION="0.55"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE="a"
@@ -39,8 +39,8 @@ readonly GITHUB_GUI_PACKAGES_REPO_PAGE="https://github.com/ewaldj/PiPrepE/tree/m
 readonly TMUX_CONFIG_CONTENT=$'set-option -g history-limit 100000\nset-option -g mouse on\n'
 readonly JOE_CONFIG_CONTENT=$':include /etc/joe/joerc\n-nobackups\n--wordwrap\n'
 readonly LIGHTDM_CONF="/etc/lightdm/lightdm.conf"
-readonly WAYLAND_SESSIONS_DIR="/usr/share/wayland-sessions"
-readonly DESKTOP_SESSION_NAME="xfce-wayland"
+readonly X11_SESSIONS_DIR="/usr/share/xsessions"
+readonly DESKTOP_SESSION_NAME="xfce"
 readonly BASH_ALIAS_LINE="alias ll='ls -la --color=auto'"
 readonly BASIC_PACKAGES=(
     "joe"
@@ -368,7 +368,7 @@ display_startup_overview() {
 |   - System-wide shell alias: ll='ls -la --color=auto'
 |   - unattended-upgrades configured for automatic security updates
 |   - Raspberry Pi specific settings (if raspi-config present):
-|     boot mode, VNC, filesystem expansion
+|     boot mode, filesystem expansion
 |
 | User management
 |   - Optional: create a new admin user with password (sudo group)
@@ -1072,14 +1072,14 @@ set_lightdm_option() {
 }
 
 configure_default_desktop_session() {
-    # lightdm on Pi OS defaults to rpd-labwc. wayvnc only mirrors a Wayland session,
-    # so the default session is set to xfce-wayland.
+    # lightdm on Pi OS defaults to rpd-labwc. Set the default session to XFCE (X11),
+    # the same session type xrdp uses.
     local session="$DESKTOP_SESSION_NAME"
     local username=""
     local user_home=""
     local dmrc_path=""
 
-    if [[ ! -f "${WAYLAND_SESSIONS_DIR}/${session}.desktop" ]]; then
+    if [[ ! -f "${X11_SESSIONS_DIR}/${session}.desktop" ]]; then
         SKIPPED_ITEMS+=("Default desktop session not set: ${session} session not installed")
         return 0
     fi
@@ -1281,7 +1281,6 @@ configure_raspberry_pi_settings() {
     boot_mode="$(determine_boot_mode_without_autologin)"
 
     run_logged_command "Configuring Raspberry Pi boot mode without autologin..." raspi-config nonint do_boot_behaviour "$boot_mode"
-    run_logged_command "Enabling Raspberry Pi VNC..." raspi-config nonint do_vnc 0
     run_logged_command "Expanding the root filesystem to maximum size..." raspi-config nonint do_expand_rootfs
     ROOTFS_EXPANSION_REQUESTED="true"
 }
